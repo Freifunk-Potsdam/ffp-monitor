@@ -1,0 +1,11 @@
+{% import 'ffhelper.tpl' as ffh %}
+
+{% if ap["ifc"] %}
+    {% set ipl = [] %}
+    {% for ifc in ap["ifc"].values() %}
+        {% if ifc["addr"] and ips.isffip( ifc["addr"] ) %}
+            {{ ipl.append( ifc["addr"] ) or '' }}
+        {% endif %}
+    {% endfor %}
+    {{ ffh.ffiplist( ips.ffipsort( ipl ), linkif = ips.isffip ) }}
+{% endif %}

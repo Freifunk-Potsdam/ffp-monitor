@@ -1,0 +1,42 @@
+<div id="legend"><table>
+    <tr><th colspan="2">Routerstatus:</th></tr>
+    <tr>
+        <td><svg><circle cx="5" cy="5" r="5" class="online"/></svg></td>
+        <th><b title="Daten aktuell">Online</b></th>
+    </tr>
+    <tr>
+        <td><svg><circle cx="5" cy="5" r="5" class="late"/></svg></td>
+        <th><b title="seit 3 Stunden keine Daten">Verspätet</b></th>
+    </tr>
+    <tr>
+        <td><svg><circle cx="5" cy="5" r="5" class="offline"/></svg></td>
+        <th><b title="seit 24 Stunden keine Daten">Offline</b></th>
+    </tr>
+    <tr>
+        <td><svg><circle cx="5" cy="5" r="5" class="dead"/></svg></td>
+        <th><b title="seit 7 Tagen keine Daten">Vermisst</b></th>
+    </tr>
+    <tr>
+        <td><svg><polygon points="0,9 9,9 5,1" class="uplink"/></svg></td>
+        <th><b title="hat eine direkte Verbindung zum Internet">Uplink</b></th>
+    </tr>
+
+
+    <tr><th colspan="2">Linkqualität:</th></tr>
+    <tr>
+        <td><svg><line x1="0" y1="3" x2="10" y2="3" class="verygood"/></svg></td>
+        <th><b title="ETX &lt; 2">Sehr Gut</b></th>
+    </tr>
+    <tr>
+        <td><svg><line x1="0" y1="3" x2="10" y2="3" class="good"/></svg></td>
+        <th><b title="2 &lt;= ETX &lt; 4">Gut</b></th>
+    </tr>
+    <tr>
+        <td><svg><line x1="0" y1="3" x2="10" y2="3" class="bad"/></svg></td>
+        <th><b title="4 &lt;= ETX &lt; 10">Schlecht</b></th>
+    </tr>
+    <tr>
+        <td><svg><line x1="0" y1="3" x2="10" y2="3" class="verybad"/></svg></td>
+        <th><b title="ETX &gt;= 10">Sehr schlecht</b></th>
+    </tr>
+</table></div>

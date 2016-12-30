@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <link rel="stylesheet" href="ol.css" type="text/css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="apmap.css" type="text/css">
+    <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="/ff/ol.js" type="text/javascript"></script>
+    <title>Freifunk Potsdam Access Point Database Map</title>
+</head>
+ <body>
+    <div id="map" class="map">
+        <div id="slider">
+            <table><tr>
+                <td width="5px"></td>
+                <th>Links mit ETX</th><th>&lt;=</th>
+                <th id="maxetx"></th>
+                <th><input id="slideetx" type="range" min="1" max="194" value="100" onchange="maxetxChanged()" oninput="maxetxChanging(this.value)" /></th>
+                <th>ETX über die letzten </th>
+                <th><input id="etx3" type="radio" name="etxbase" value="3" onchange="maxetxChanged()"> 3h</th>
+                <th><input id="etx24" type="radio" name="etxbase" value="24" checked="checked" onchange="maxetxChanged()"> 24h</th>
+                <td width="5px"></td>
+            </tr></table>
+        </div>
+        <div id="popup"></div>
+        <div id="info"></div>
+        {% block legend %}
+            {% include 'legend.html' %}
+        {% endblock %}
+    </div>
+    <script type="text/javascript">
+        var aplayer = new ol.layer.Vector({
+            title: 'added Layer',
+//            source: source,
+            style: function(feature, resolution){
+                var type = feature.getGeometry().getType();
+                var props = feature.getProperties();
+                if (type == "Point" && props['uplink']) {
+                    var style = new ol.style.Style({
+                        image: new ol.style.RegularShape({
+                            points: 3,
+                            fill: new ol.style.Fill({ color: 'color' in props ? props['color'] : '#FFFFFF' }),
+                            stroke: new ol.style.Stroke({ color: '#222222' }),
+                            radius: 1.5 * Math.max(3,Math.min(10/Math.sqrt(resolution),10))
+                        })
+                    });
+                    return style;
+                } else if (type == "Point" && ! props['uplink']) {
+                    var style = new ol.style.Style({
+                        image: new ol.style.Circle({
+                            fill: new ol.style.Fill({ color: 'color' in props ? props['color'] : '#FFFFFF' }),
+                            stroke: new ol.style.Stroke({ color: '#222222' }),
+                            radius: Math.max(3,Math.min(10/Math.sqrt(resolution),10))
+                        })
+                    });
+                    return style;
+                } else if (type == "LineString") {
+                    var style = new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: 'color' in props ? props['color'] : '#FFFFFF',
+                            width: Math.max(1,Math.min(4/resolution,3))
+                        })
+                    });
+                    return style;
+                }
+            },
+        });
+
+        function maxetxChanging(newetx) {
+            if (newetx > 190) {
+                newetx = Math.pow(10,newetx-188);
+            } else if (newetx <= 100) {
+                newetx = newetx / 10;
+            } else {
+                newetx = newetx - 90;
+            }
+            document.getElementById("maxetx").innerHTML = newetx;
+        }
+        maxetxChanging(document.getElementById("slideetx").value);
+        
+        var qtimer;
+
+        function maxetxChanged(){
+            clearTimeout(qtimer);
+            var maxetx = document.getElementById("maxetx").innerHTML;
+            var etxbase = $('input[name=etxbase]:checked').val();
+            aplayer.setSource(new ol.source.Vector({
+                projection : 'EPSG:3857',
+                format: new ol.format.GeoJSON(),
+                url: '?maxetx='+maxetx+'&etxbase='+etxbase+'&fmt=geojson',
+            }));
+            qtimer = setTimeout(maxetxChanged, 300000);
+        }
+        qtimer = setTimeout(maxetxChanged, 500);
+
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+//                    source: new ol.source.MapQuest({layer: 'osm'})
+                    source: new ol.source.OSM()
+                }),
+                aplayer,
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([13.0642644, 52.3938361]),
+                zoom: 15
+            })
+        });
+
+        var popupe = document.getElementById('popup');
+        var infoe = document.getElementById('info');
+
+        var popup = new ol.Overlay({
+            element: popupe,
+            positioning: 'top-center',
+            offset: [0,-5],
+            stopEvent: false,
+        });
+
+        var info = new ol.Overlay({
+            element: infoe,
+            positioning: 'bottom-center',
+            offset: [0,-5],
+            stopEvent: true,
+            autoPan: true,
+            autoPanAnimation : {
+                duration : 250
+            }
+        });
+
+        map.addOverlay(popup);
+        map.addOverlay(info);
+
+        map.on('click', function(evt) {
+            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
+            if (feature) {
+                var c = feature.get("info");
+                if (c) {
+                    $(infoe).popover('destroy');
+                    $(infoe).popover({
+                        'placement': 'bottom',
+                        'html': true,
+                        'content': c,
+                        'animation': false,
+                    });
+                    if (feature.getGeometry().getType() == "Point") {
+                        info.setPosition(feature.getGeometry().getCoordinates());
+                    } else {
+                        info.setPosition(evt.coordinate);
+                    }
+                    $(infoe).popover('show');
+                }
+            } else {
+                $(infoe).popover('destroy');
+            }
+        });
+
+        map.on('pointermove', function (evt) {
+            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
+            if (feature) {
+                var c = feature.get("popup");
+                if (c) {
+                    $(popupe).popover('destroy');
+                    $(popupe).popover({
+                        'placement': 'top',
+                        'html': true,
+                        'content': c,
+                        'animation': false,
+                    });
+                    popup.setPosition(feature.getGeometry().getCoordinates());
+                    $(popupe).popover('show');
+                }
+            } else {
+                $(popupe).popover('destroy');
+            }
+        });
+/*
+        // autocentering deactivated, struggling Nodes in Güterfelde
+        var onChangeKey = source.on('change', function() {
+            if (source.getState() == 'ready') {
+                source.unByKey(onChangeKey);
+                map.getView().fit(source.getExtent(), map.getSize());
+            }
+        });*/
+    </script>
+</body>
+</html>

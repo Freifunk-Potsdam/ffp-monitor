@@ -1,0 +1,11 @@
+{% set mail = ap.get("sysinfo",{}).get("mail","").strip() %}
+{% set note = ap.get("sysinfo",{}).get("note","").strip() %}
+{% if "@" in mail %}
+    <a href="mailto:{{ mail }}">{{ mail }}</a>
+{% else %}
+    {{ mail }}
+{% endif %}
+{% if note %}
+    <br>
+    {{ note }}
+{% endif %}
