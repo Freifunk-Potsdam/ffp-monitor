@@ -1,0 +1,104 @@
+.map {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    width: 100%;
+}
+.popover b,
+.popover th,
+.popover td {
+    white-space: nowrap;
+    vertical-align: top;
+    padding: 5px;
+}
+.info {
+    width: 400px;
+}
+.popover {
+    max-width: none;
+}
+#slider {
+    left:40px;
+    right:40px;
+    position: absolute;
+    z-index:10;
+}
+#slider table {
+    margin: auto;
+    color: #EEEEEE;
+    background: rgba(0, 0, 0, 0.5);
+}
+#slider th,
+#slider td {
+    padding: 5px;
+    white-space: nowrap;
+}
+#maxetx {
+    min-width: 65px;
+}
+#slideetx {
+    width: 500px;
+}
+.linkinfo td,
+.linkinfo th {
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+}
+#legend {
+    z-index: 10;
+    display: block;
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #EEEEEE;
+    font-size: 80%;
+}
+#legend th {
+    padding-bottom: 2px;
+    padding-right: 10px;
+    padding-left: 5px;
+}
+#legend td {
+    padding-bottom: 0px;
+    padding-left: 5px;
+}
+#legend svg {
+    width: 10px;
+    height: 10px;
+}
+#legend circle, #legend polygon {
+    stroke:#222222;
+    stroke-width:1px;
+}
+#legend circle.online {
+    fill:#00EE00;
+}
+#legend circle.late {
+    fill:#FFFF00;
+}
+#legend circle.offline {
+    fill:#FF0000;
+}
+#legend circle.dead {
+    fill:#555555;
+}
+#legend polygon.uplink {
+    fill:#00EE00;
+}
+#legend line {
+    stroke-width:3px;
+}
+#legend line.verygood {
+    stroke:#00CC00;
+}
+#legend line.good {
+    stroke:#FFCB05;
+}
+#legend line.bad {
+    stroke:#FF6600;
+}
+#legend line.verybad {
+    stroke:#BB3333;
+}

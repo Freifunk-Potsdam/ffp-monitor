@@ -1,0 +1,22 @@
+.apdb-row-odd {
+    background-color: #EAEAEA;
+}
+.apdb-cell-dead {
+    background-color: #AAAAAA;
+}
+.apdb-cell-offline {
+    background-color: #FFAAAA;
+}
+.apdb-cell-late {
+    background-color: #FFFFAA;
+}
+.apdb-cell-links {
+    white-space: nowrap;
+}
+.apdb-cell-delay, .apdb-cell-uptime {
+    text-align: right;
+    white-space: nowrap;
+}
+.apdb-cell-scriptver,.apdb-cell-ips,.apdb-cell-routes {
+    text-align: center;
+}
