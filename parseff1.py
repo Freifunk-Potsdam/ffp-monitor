@@ -25,10 +25,13 @@ class FfXmlParser:
             self.parsef(xml,ip)
             os.remove(f)
         except Exception as ex:
-            errf = os.path.join(os.path.dirname(f),"err",os.path.basename(f))
-            os.rename(f,errf)
             print(f)
             traceback.print_exc()
+            try:
+                errf = os.path.join(os.path.dirname(f),"err",os.path.basename(f))
+                os.rename(f,errf)
+            except:
+                pass
 
     def parsef(self,xml,ip):
         sect = "parsef_%s" % xml.tag.lower()
@@ -65,7 +68,7 @@ class FfXmlParser:
             "host": host,
             "time": time_,
             "senderip": ip,
-            "interface_config": list(interfaces.values())
+            "ifc": interfaces,
         })
         # collecting influx data points
         tags = {
@@ -133,8 +136,7 @@ class FfXmlParser:
         for n,i in interfaces.items():
             tags = {}
             fields = {}
-            tags["device"] = n
-            for t in ["addr","mask","net"]:
+            for t in ["device","addr","mask","net"]:
                 if t in i:
                     tags[t] = i[t]
             for f in ["rx_packets","tx_packets","rx_bytes","tx_bytes"]:
@@ -144,9 +146,9 @@ class FfXmlParser:
 
     def mk_idps_wireless(self,interfaces):
         for n,i in interfaces.items():
-            tags = { "device": n }
             fields = {}
-            if "essid" in i and "assoc" in i:
+            if set(i.keys()) >= set([ "device", "essid", "assoc" ]):
+                tags = { "device": i["device"] }
                 tags["essid"] = i["essid"]
                 fields["assoc"] = i["assoc"]
                 yield ( tags, fields )
@@ -154,12 +156,13 @@ class FfXmlParser:
     def mk_idps(self, meas, ts, tagsa, tags_fields):
         for tags,fields in tags_fields:
             tags.update(tagsa)
-            yield {
-                "measurement":  meas,
-                "timestamp":    ts,
-                "tags":         tags,
-                "fields":       fields,
-            }
+            if len(fields) > 0:
+                yield {
+                    "measurement":  meas,
+                    "timestamp":    ts,
+                    "tags":         tags,
+                    "fields":       fields,
+                }
 
     def mk_idp(self, meas, ts, tags, fields):
         if len(fields) > 0:
@@ -258,10 +261,10 @@ class FfXmlParser:
             for i in ifc.findall("*"):
                 i = [x.strip() for x in i.text.strip().split("\n")]
                 if len(i) > 0 and len(i[0]) > 0:
-                    name = i[0].split()[0]
+                    name = i[0].split()[0].replace(".","_")
                     if name not in interfaces:
                         l = i[0].split()
-                        interfaces[name] = {"device":name}
+                        interfaces[name] = {"device":l[0]}
                         if "HWaddr" in l:
                             interfaces[name]["mac"] = l[ l.index("HWaddr") + 1 ]
                     for l in i[1:]:
@@ -287,10 +290,10 @@ class FfXmlParser:
             for i in iwi.findall("*"):
                 i = [x.strip() for x in i.text.strip().split("\n")]
                 if len(i) > 0 and len(i[0]) > 0:
-                    name = i[0].split()[0]
+                    name = i[0].split()[0].replace(".","_")
                     if name not in interfaces:
                         l = i[0].split()
-                        interfaces[name] = {"device":name}
+                        interfaces[name] = {"device":l[0]}
                         if "ESSID:" in l:
                             interfaces[name]["essid"] = " ".join( l[ l.index("ESSID:") + 1: ] ).strip('"')
                     for l in i[1:]:
