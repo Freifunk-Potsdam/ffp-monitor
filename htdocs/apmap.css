@@ -1,8 +1,42 @@
+body {
+    background-color: #EEEEEE;
+}
 .map {
     position: absolute;
     top: 0px;
     bottom: 0px;
     width: 100%;
+}
+.infomap {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    width: 70%;
+}
+.apinfo {
+    position:absolute;
+    right: 0px;
+    width: 30%;
+    float: right;
+    top: 0px;
+    bottom: 0px;
+    padding: 10px;
+    overflow:auto;
+}
+.apinfo table {
+    width: 100%;
+}
+.apinfo h2 {
+    text-align: center;
+}
+h1,h2,h3,h4,h5 {
+    font-weight: bold;
+}
+.apinfo th {
+    font-weight: bold;
+    vertical-align: top;
+    white-space: nowrap;
+    padding-right: 10px;
 }
 .popover b,
 .popover th,
@@ -101,4 +135,16 @@
 }
 #legend line.verybad {
     stroke:#BB3333;
+}
+.apinfo-state-dead {
+    background-color: #AAAAAA;
+}
+.apinfo-state-offline {
+    background-color: #FFAAAA;
+}
+.apinfo-state-late {
+    background-color: #FFFFAA;
+}
+.apinfo-state-online {
+    background-color: #AAFFAA;
 }
