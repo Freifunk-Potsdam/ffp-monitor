@@ -12,21 +12,18 @@ from cherrypy.lib.static import serve_fileobj, serve_file
 import logging
 import os
 import json
+import jinja2
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 import influx
+import time
+from math import radians, cos, sin, asin, sqrt
 
 logging.basicConfig(level=logging.WARNING)
 
 cherrypy.config.update({
     'environment': 'embedded',
 })
-
-class JSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, ObjectId):
-            return str(o)
-        return json.JSONEncoder.default(self, o)
 
 mongodbe = MongoClient()
 mongodb = mongodbe["freifunk"]
@@ -35,24 +32,51 @@ influxdb = influx.InfluxDB("localhost",8086,"freifunk","freifunk","freifunk",deb
 def startapp(app):
     return cherrypy.Application( app( mongodb, influxdb ) , script_name=None, config=None)
 
-class DbOwner():
-    def __init__(self,mdb,idb):
-        self._mdb = mdb
-        self._idb = idb
+def intdef(s,default=0):
+    try:
+        return int(s)
+    except:
+        return default
 
-    @cherrypy.expose
-    def default(self,name):
-        tpldir = os.path.join(os.path.dirname(os.path.realpath(__file__)),"htdocs")
-        fname = os.path.abspath(os.path.join(tpldir,name))
-        print(fname)
-        if os.path.commonprefix([fname,tpldir]) == tpldir and os.path.exists(fname):
-            return serve_file(os.path.join(fname))
-        raise HTTPError(404)
+def floatdef(s,default=0.0):
+    try:
+        return float(s)
+    except:
+        return default
 
-    def getip(self):
-        if "X-Forwarded-For" in cherrypy.request.headers:
-            return cherrypy.request.headers["X-Forwarded-For"]
+def tryround(n,d=0):
+    return round(n,d) if isinstance(n,float) else n
+
+def getelem(data,elem,default=None):
+    name,_,elem = elem.partition(".")
+    if name in data:
+        data = data[name]
+        if elem == "":
+            return data
         else:
-            return cherrypy.request.remote.ip
+            return getelem(data,elem,default)
+    else:
+        return default
 
+def formatDuration(v):
+    res = ""
+    v,s = divmod(v,60)
+    v,m = divmod(v,60)
+    d,h = divmod(v,24)
+    if (d > 0):
+        res += "%dd " % d;
+    if (h > 0):
+        res += "%dh " % h;
+    if (m > 0):
+        res += "%dm " % m;
+    return res.strip()
+
+def haversine(lon1, lat1, lon2, lat2):
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    km = 6367 * c
+    return km
 
