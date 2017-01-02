@@ -18,8 +18,8 @@
                 <th id="maxetx"></th>
                 <th><input id="slideetx" type="range" min="1" max="194" value="100" onchange="maxetxChanged()" oninput="maxetxChanging(this.value)" /></th>
                 <th>ETX über die letzten </th>
-                <th><input id="etx3" type="radio" name="etxbase" value="3" onchange="maxetxChanged()"> 3h</th>
-                <th><input id="etx24" type="radio" name="etxbase" value="24" checked="checked" onchange="maxetxChanged()"> 24h</th>
+                <th><input id="etx3" type="radio" name="etxbase" value="etx3" onchange="maxetxChanged()"> 3h</th>
+                <th><input id="etx24" type="radio" name="etxbase" value="etx24" checked="checked" onchange="maxetxChanged()"> 24h</th>
                 <td width="5px"></td>
             </tr></table>
         </div>
@@ -32,39 +32,7 @@
     <script type="text/javascript">
         var aplayer = new ol.layer.Vector({
             title: 'added Layer',
-//            source: source,
-            style: function(feature, resolution){
-                var type = feature.getGeometry().getType();
-                var props = feature.getProperties();
-                if (type == "Point" && props['uplink']) {
-                    var style = new ol.style.Style({
-                        image: new ol.style.RegularShape({
-                            points: 3,
-                            fill: new ol.style.Fill({ color: 'color' in props ? props['color'] : '#FFFFFF' }),
-                            stroke: new ol.style.Stroke({ color: '#222222' }),
-                            radius: 1.5 * Math.max(3,Math.min(10/Math.sqrt(resolution),10))
-                        })
-                    });
-                    return style;
-                } else if (type == "Point" && ! props['uplink']) {
-                    var style = new ol.style.Style({
-                        image: new ol.style.Circle({
-                            fill: new ol.style.Fill({ color: 'color' in props ? props['color'] : '#FFFFFF' }),
-                            stroke: new ol.style.Stroke({ color: '#222222' }),
-                            radius: Math.max(3,Math.min(10/Math.sqrt(resolution),10))
-                        })
-                    });
-                    return style;
-                } else if (type == "LineString") {
-                    var style = new ol.style.Style({
-                        stroke: new ol.style.Stroke({
-                            color: 'color' in props ? props['color'] : '#FFFFFF',
-                            width: Math.max(1,Math.min(4/resolution,3))
-                        })
-                    });
-                    return style;
-                }
-            },
+            style: {% block stylefunc %}{% include 'mapstyle.js' %}{% endblock %},
         });
 
         function maxetxChanging(newetx) {
@@ -88,7 +56,7 @@
             aplayer.setSource(new ol.source.Vector({
                 projection : 'EPSG:3857',
                 format: new ol.format.GeoJSON(),
-                url: '?maxetx='+maxetx+'&etxbase='+etxbase+'&fmt=geojson',
+                url: '{{ gjsurl }}?maxetx='+maxetx+'&etxbase='+etxbase,
             }));
             qtimer = setTimeout(maxetxChanged, 300000);
         }
@@ -176,14 +144,6 @@
                 $(popupe).popover('destroy');
             }
         });
-/*
-        // autocentering deactivated, struggling Nodes in Güterfelde
-        var onChangeKey = source.on('change', function() {
-            if (source.getState() == 'ready') {
-                source.unByKey(onChangeKey);
-                map.getView().fit(source.getExtent(), map.getSize());
-            }
-        });*/
     </script>
 </body>
 </html>
