@@ -3,8 +3,7 @@ from base import *
 from pprint import pprint
 import time
 from hashlib import md5
-from defs import DEFLON,DEFLAT
-from helpers import getelem,floatdef
+from apdb import DEFLON,DEFLAT
 
 def mean(l):
     while None in l:
