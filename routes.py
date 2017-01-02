@@ -3,7 +3,6 @@ from base import *
 from pprint import pprint
 import time
 from apdb import DEFLON,DEFLAT
-from helpers import getelem,floatdef
 from copy import deepcopy
 from multiprocessing.pool import ThreadPool
 from multiprocessing import Pool
