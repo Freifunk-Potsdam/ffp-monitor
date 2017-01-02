@@ -14,43 +14,92 @@ QQUERIES = {
 DEFLON = 13.054457
 DEFLAT = 52.389375
 
-def buildquery(q,over={}):
-    if q in QQUERIES:
-         return QQUERIES[q]
-    try:
-        qs = shlex.split(q)
-    except ValueError as ex:
-        print(ex, q)
-        qs = q.split()
-    query = {}
-    i = 0 
-    while i < len(qs):
-        if "=" in qs[i]:
-            k,_,v = qs[i].partition("=")
-            query[k] = v
-            del qs[i]
-        else:
-            i += 1
-    fields = DEFQUERYFIELDS
-    ored = []
-    for f in fields:
-        anded = []
-        for qa in qs:
-            qa = {f:{"$regex":qa, "$options":"i"}}
-            anded.append(qa)
-        if len(anded) > 0:
-            ored.append({"$and":anded})
-    if len(ored)>0:
-        query["$or"] = ored
-    query.update(over)
-    return query
-
 class ApDb:
+    @cherrypy.expose
+    def apdb(self):
+        return self.serve_site("apdb", cssprefix = "apdb", jsonurl = "apdb.json" )
+
+    @cherrypy.expose
+    def apmap(self):
+        return self.serve_site("apmap", gjsurl = "apmap.geojson" )
+
+    @cherrypy.expose
+    def apinfo(self,name,**kwargs):
+        for ap in self.get_aps({"hostname": { "$regex": "^%s" % name }}):
+            return self.serve_site("apinfomap", ap = ap, ips = ips, DEFLAT = DEFLAT, DEFLON = DEFLON,
+                gjsurl = "../aproutes.geojson?node=%s" % ap["hostname"], **kwargs )
+        raise HTTPError(404)
+
+    @cherrypy.expose
+    def apdb_json(self,q=""):
+        aps = self.get_aps( buildquery(q) )
+        cols = [
+            ["state","style",{"role":"style"}],
+            ["hostname","Hostname"],
+            ["ips","IP(s)"],
+            ["routes","Gateways"],
+            ["location","Standort"],
+            ["uptime","Uptime",{"type":"duration"}],
+            ["device","Gerät"],
+            ["firmware","Firmware"],
+            ["scriptver","Script"],
+            ["contact","Kontakt"],
+            ["delay","Letzte Daten",{"type":"duration"}],
+            ["links","Links"],
+        ]
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        return self.gen_apdb_json(aps,cols)
+
+    @cherrypy.expose
+    def apmap_geojson(self,maxetx=None,etxbase=None):
+        maxetx = floatdef(maxetx,10)
+        etxbase = etxbase if etxbase in ["etx3","etx24"] else "etx24"
+        gjs = { "type": "FeatureCollection","features": [] }
+        
+        for d in self.get_links( { etxbase: { "$lte": maxetx } }, sort = [(etxbase,-1)] ):
+            gjs["features"].append( self.link2gjs(d,etxbase) )
+
+        docs = self.get_aps( sort = [("last_ts",-1)] )
+        for d in docs:
+            gjs["features"].append( self.ap2gjs(d) )
+
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        return bytes(json.dumps(gjs),"utf-8")
+
+    @cherrypy.expose
+    def aproutes_geojson(self,node):
+        gjs = { "type": "FeatureCollection","features": [] }
+
+        reachable = [node]
+        docs = list(self._mdb["routes"].find({"start":node},sort=[("etx",-1)]))
+        if len(docs) > 0:
+            maxetx = docs[0]["etx"]
+            for d in docs:
+                reachable.append(d["target"])
+                gjs["features"].append( self.route2gjs(d,maxetx) )
+
+        docs = self.get_aps( sort = [("last_ts",-1)] )
+        for d in docs:
+            if d["hostname"] not in reachable:
+                d["state"] = "unreachable"
+            elif d["hostname"] == node:
+                d["state"] = "selected"
+            gjs["features"].append( self.ap2gjs(d) )
+
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        return bytes(json.dumps(gjs),"utf-8")
+
     def get_aps(self, q = {}, sort = None):
         now = time.time()
         for ap in self._mdb["nodes"].find( q, sort = sort ):
             ap["delay"] = now - ap["last_ts"] if "last_ts" in ap else None
             yield ap
+
+    def get_links(self, q = {}, sort = None):
+        return self._mdb["linkperf"].find( q, sort = sort )
+
+    def get_routes(self, start):
+        return self._mdb["routes"].find({"start":start},sort=[("etx",-1)])
 
     def gen_apdb_json(self,aps,cols):
         now = time.time()
@@ -83,33 +132,6 @@ class ApDb:
                 col["type"] = "number"
             res["cols"].append( col )
         return bytes(json.dumps( res ),"utf-8")
-
-    @cherrypy.expose
-    def apdb(self):
-        return self.serve_site("apdb", cssprefix = "apdb", jsonurl = "apdb.json" )
-
-    @cherrypy.expose
-    def apdb_json(self,q=""):
-        aps = self.get_aps( buildquery(q) )
-        cols = [
-            ["state","style",{"role":"style"}],
-            ["hostname","Hostname"],
-            ["ips","IP(s)"],
-            ["routes","Gateways"],
-            ["location","Standort"],
-            ["uptime","Uptime",{"type":"duration"}],
-            ["device","Gerät"],
-            ["firmware","Firmware"],
-            ["scriptver","Script"],
-            ["contact","Kontakt"],
-            ["delay","Letzte Daten",{"type":"duration"}],
-            ["links","Links"],
-        ]
-        cherrypy.response.headers['Content-Type'] = 'application/json'
-        return self.gen_apdb_json(aps,cols)
-
-    def get_links(self, q = {}, sort = None):
-        return self._mdb["linkperf"].find( q, sort = sort )
 
     def ap2gjs(self,ap):
         random.seed(ap["hostname"])
@@ -152,29 +174,6 @@ class ApDb:
         }
         return f
 
-    @cherrypy.expose
-    def apmap(self):
-        return self.serve_site("apmap", gjsurl = "apmap.geojson" )
-
-    @cherrypy.expose
-    def apmap_geojson(self,maxetx=None,etxbase=None):
-        maxetx = floatdef(maxetx,10)
-        etxbase = etxbase if etxbase in ["etx3","etx24"] else "etx24"
-        gjs = { "type": "FeatureCollection","features": [] }
-        
-        for d in self.get_links( { etxbase: { "$lte": maxetx } }, sort = [(etxbase,-1)] ):
-            gjs["features"].append( self.link2gjs(d,etxbase) )
-
-        docs = self.get_aps( sort = [("last_ts",-1)] )
-        for d in docs:
-            gjs["features"].append( self.ap2gjs(d) )
-
-        cherrypy.response.headers['Content-Type'] = 'application/json'
-        return bytes(json.dumps(gjs),"utf-8")
-
-    def get_routes(self, start):
-        return self._mdb["routes"].find({"start":start},sort=[("etx",-1)])
-
     def route2gjs(self,l,maxetx):
         l["length"] = 0
         for i in range(1,len(l["c"])):
@@ -193,41 +192,33 @@ class ApDb:
         }
         return f
 
-    @cherrypy.expose
-    def apinfo(self,name,**kwargs):
-        for ap in self.get_aps({"hostname": { "$regex": "^%s" % name }}):
-            return self.serve_site("apinfomap", 
-                ap = ap,
-                gjsurl = "../aproutes.geojson?node=%s" % ap["hostname"],
-                ips = ips,
-                DEFLAT = DEFLAT,
-                DEFLON = DEFLON,
-                **kwargs
-            )
-        raise HTTPError(404)
-
-    @cherrypy.expose
-    def aproutes_geojson(self,node):
-        gjs = { "type": "FeatureCollection","features": [] }
-
-        reachable = [node]
-        docs = list(self._mdb["routes"].find({"start":node},sort=[("etx",-1)]))
-        if len(docs) > 0:
-            maxetx = docs[0]["etx"]
-            for d in docs:
-                reachable.append(d["target"])
-                gjs["features"].append( self.route2gjs(d,maxetx) )
-
-        docs = self.get_aps( sort = [("last_ts",-1)] )
-        for d in docs:
-            if d["hostname"] not in reachable:
-                d["state"] = "unreachable"
-            elif d["hostname"] == node:
-                d["state"] = "selected"
-            gjs["features"].append( self.ap2gjs(d) )
-
-        cherrypy.response.headers['Content-Type'] = 'application/json'
-        return bytes(json.dumps(gjs),"utf-8")
-
-
-
+def buildquery(q,over={}):
+    if q in QQUERIES:
+         return QQUERIES[q]
+    try:
+        qs = shlex.split(q)
+    except ValueError as ex:
+        print(ex, q)
+        qs = q.split()
+    query = {}
+    i = 0 
+    while i < len(qs):
+        if "=" in qs[i]:
+            k,_,v = qs[i].partition("=")
+            query[k] = v
+            del qs[i]
+        else:
+            i += 1
+    fields = DEFQUERYFIELDS
+    ored = []
+    for f in fields:
+        anded = []
+        for qa in qs:
+            qa = {f:{"$regex":qa, "$options":"i"}}
+            anded.append(qa)
+        if len(anded) > 0:
+            ored.append({"$and":anded})
+    if len(ored)>0:
+        query["$or"] = ored
+    query.update(over)
+    return query
