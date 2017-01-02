@@ -35,3 +35,30 @@ def ffipsort(l):
         rl += tl
     return rl + l
 
+def anyextgateway(*gateways):
+    for r in gateways:
+        if not isffip(r):
+            return True
+    return False
+
+def calcnet(ip,mask):
+    ip = [int(x) for x in ip.split(".")]
+    mask = [int(x) for x in mask.split(".")]
+    ipn = 0
+    for i in ip:
+        ipn = ipn * 256 + i
+    maskn = 0
+    for i in mask:
+        maskn = maskn * 256 + i
+    bits = 0
+    for i in range(31,-1,-1):
+        if maskn & (2**i) == 0:
+            break
+        bits += 1
+    netn = ipn & ~(2**(32-bits) - 1)
+    net = []
+    for i in range(4):
+        net.insert(0,netn % 256)
+        netn = netn // 256
+    return ".".join([str(x) for x in net]), bits
+
