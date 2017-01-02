@@ -1,0 +1,390 @@
+#!/bin/sh /etc/rc.common
+# this version only works with OpenWrt Backfire and up (> r20728)!
+# /etc/init.d/ffp-collect enable
+
+# Network devices you want to exclude from statistics, for example private networks.
+EXCLUDE_DEVICES=""
+
+COLLDIR=/tmp/collstat
+
+SCRIPTNAME='ffp-collect'
+SCRIPTPATH='/etc/init.d/' # _with_ trailing / !
+UPLOADHOST='monitor.freifunk-potsdam.de'
+UPLOADURL='/fff'
+UPGRADEURL='http://monitor.freifunk-potsdam.de/ffp-collect'
+
+##### ----- do NOT edit from this line on ----- #####
+## init variables; https://wiki.openwrt.org/doc/techref/initscripts
+export LC_ALL=C
+START=99
+STOP=11
+EXTRA_COMMANDS="upload collect upgrade install"
+
+## script variables
+SCRIPTVERSION='0.9'
+SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
+CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
+CRONTABUSER='root'
+CRONTAB=${CRONTABPATH}${CRONTABUSER}
+
+UPLOADINTERVAL=$(awk 'BEGIN{srand();print int(rand()*60)}') # run cron hourly at a random minute
+UPGRADEMINUTE=$(( ( $UPLOADINTERVAL + 5 ) % 60 )) # upgrade 5 minutes after upload
+UPGRADEHOUR=$(awk 'BEGIN{srand();print int(rand()*24)}') # random hour for upgrade cron
+UPGRADEDAY='1'
+
+if [ ! -d "$COLLDIR" ]; then
+	mkdir "$COLLDIR"
+fi
+EXCLUDE_DEVICES=`echo $EXCLUDE_DEVICES | sed 's/\./_/g'`
+hostname=`uci get system.@system[0].hostname`
+time=`date +%s`
+
+xuptime() {
+	echo "<uptime>"
+	uptime
+	echo "</uptime>"
+}
+
+xifconfig() {
+	echo "<ifconfig>"
+	for dev in `ls /sys/class/net/` ; do
+		ndev=`echo $dev | sed 's/\./_/g'`
+		if [ "`echo $EXCLUDE_DEVICES | grep -w $ndev`" = "" ] ; then
+			echo "<$ndev>"
+			ifconfig $dev
+			echo "</$ndev>"
+		fi
+	done
+	echo "</ifconfig>"
+}
+
+xdhcp() {
+	echo "<dhcp_leases>"
+	cut -d' ' -f1,3 /var/dhcp.leases
+	echo "</dhcp_leases>"
+}
+
+xlinks() {
+	echo "<links>"
+	echo /links | nc 127.0.0.1 9090
+	echo "</links>"
+}
+
+xtop() {
+	echo "<top>"
+        sleep 3
+	top -b -n1 | head -n2
+	echo "</top>"
+}
+
+xdf() {
+	echo "<df>"
+	df
+	echo "</df>"
+}
+
+xconn() {
+	echo "<conn>"
+	cut -c12-20 /proc/net/nf_conntrack | sort | uniq -c
+	echo "</conn>"
+}
+xiwinfo() {
+	echo "<iwinfo>"
+	iwinfo | grep "^[a-z]" | while read line ; do
+		dev=`echo $line | cut -d' ' -f1`
+		ndev=`echo $dev | sed 's/\./_/g'`
+		if [ "`echo $EXCLUDE_DEVICES | grep -w $ndev`" = "" ] ; then
+			cnt=`iwinfo $dev assoclist | grep -E "^[0-9A-F]{2}:" | wc -l`
+			echo $line $cnt
+		fi
+	done
+	echo "</iwinfo>"
+}
+
+xroutes() {
+	echo "<routes>"
+        ip route show table main | grep default
+        ip route show table olsr-default | grep default
+	echo "</routes>"
+}
+
+xoptions() {
+        echo "<options>"
+        grep 'latitude' /etc/config/system
+        grep 'longitude' /etc/config/system
+        grep 'location' /etc/config/system
+        grep 'mail' /etc/config/freifunk
+        grep 'note' /etc/config/freifunk
+        echo "</options>"
+}
+
+xsystem() {
+        echo "<system>"
+        echo -n "firmware : "
+        cat /etc/openwrt_version
+        grep 'machine' /proc/cpuinfo
+        grep 'system type' /proc/cpuinfo
+        echo "</system>"
+}
+
+echocrlf() {
+    echo -n "$1"
+    echo -e "\r"
+}
+
+fupload() {
+    if [ -f "$1" ]; then
+            len=`ls -al "$1" | sed 's/ \+/\t/g' | cut -f5`
+            BOUNDARY="----BOUNDARY"
+            sleep $(( 10 + $len / 1000 )) && killall nc &
+            w=$!
+            (
+                    line0="--$BOUNDARY"
+                    line1="Content-Disposition: form-data; name=\"f\"; filename=\"`basename $1`\""
+                    line2="Content-Type: application/octet-stream"
+                    line3="--$BOUNDARY--"
+            
+			len=$(( $len + `echo -n $line0 | wc -c` + 2 ))
+			len=$(( $len + `echo -n $line1 | wc -c` + 2 ))
+			len=$(( $len + `echo -n $line2 | wc -c` + 2 ))
+			len=$(( $len + `echo -n $line3 | wc -c` + 2 ))
+
+			len=$(( $len + 2 + 2 ))
+		
+			echocrlf "POST $UPLOADURL HTTP/1.1"
+			echocrlf "Host: $UPLOADHOST"
+			echocrlf "Connection: close"
+			echocrlf "Content-Length: $len"
+			echocrlf "Content-Type: multipart/form-data; boundary=$BOUNDARY"
+			echocrlf
+			echocrlf "$line0"
+			echocrlf "$line1"
+			echocrlf "$line2"
+			echocrlf
+			cat "$1"
+			echocrlf
+			echocrlf "$line3"
+		) | nc $UPLOADHOST 80 | tail -n1
+		kill $w
+	fi
+}
+
+plog() {
+	MSG="$*"
+	echo ${MSG}
+	logger -t ${SCRIPTNAME} ${MSG}
+}
+
+start() {
+	# INFO: enable init script AND add update cron job
+	if [ ! -f "/etc/rc.d/S${START}${SCRIPTNAME}" ]; then
+		enable
+		plog "init script enabled (${SCRIPT} start)"
+	fi
+	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
+
+	CRONJOB="${UPLOADINTERVAL} * * * * ${SCRIPT} upload # FreiFunkPotsdam-CollectUpload (v${SCRIPTVERSION})"
+	echo "${CRONJOB}" >> ${CRONTAB}
+	CRONJOB="* * * * * ${SCRIPT} collect # FreiFunkPotsdam-CollectCollection (v${SCRIPTVERSION})"
+	echo "${CRONJOB}" >> ${CRONTAB}
+	CRONJOB="${UPGRADEMINUTE} ${UPGRADEHOUR} ${UPGRADEDAY} * * ${SCRIPT} upgrade # FreiFunkPotsdam-CollectUpgrade (v${SCRIPTVERSION})"
+	echo "${CRONJOB}" >> ${CRONTAB}
+
+	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
+	plog "cron jobs for user ${CRONTABUSER} added"
+}
+
+stop() {
+	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
+	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
+	plog "cron jobs for user ${CRONTABUSER} removed"
+	upload --now
+}
+
+collsysinfo() {
+	(
+	echo "<ffinfo host='$hostname' time='$time' ver='$SCRIPTVERSION'>"
+	xsystem
+	xoptions
+        xroutes
+	echo "</ffinfo>"
+	) > $COLLDIR/$time.info.cff.xml
+}
+
+collect() {
+	(
+	echo "<ffstat host='$hostname' time='$time' ver='$SCRIPTVERSION'>"
+	xtop
+	xuptime
+	xifconfig
+	xdhcp
+	xlinks
+	xdf
+	xconn
+	xiwinfo
+	echo "</ffstat>"
+	) > $COLLDIR/$time.cff.xml
+}
+
+upload_rm() {
+        if [ -f "$1" ]; then
+                plog "uploading $1..."
+                res=`fupload $1 $UPLOADHOST $UPLOADURL`
+                if [ "$res" = "success" ]; then
+                        rm $1
+                fi
+        fi
+}
+
+upload_rm_or_gzip() {
+        if [ -f "$1" ]; then
+                plog "uploading $1..."
+                res=`fupload $1 $UPLOADHOST $UPLOADURL`
+                if [ "$res" = "success" ]; then
+                        rm $1
+                else
+                        plog "uploading $1 failed, zipping..."
+                        gzip $1 2> /dev/null
+                fi
+        fi
+}
+
+upload() {
+	if [ "$1" != "--now" ]; then
+		plog "sleeping 10 seconds before upload..."
+		sleep 10
+	fi
+        collsysinfo
+	for f in $COLLDIR/*.cff.xml.gz; do
+                upload_rm $f &
+                sleep 1
+	done
+	for f in `find $COLLDIR/*.cff.xml -size +100c`; do
+                upload_rm_or_gzip $f &
+                sleep 1
+	done
+        wait
+	filled=`df $COLLDIR | tail -n1 | sed -E 's/^.*([0-9]+)%.*$/\1/g'`
+	while [ $filled -gt 50 ]; do
+		f=`ls -lrc $COLLDIR | sed 's/ \+/\t/g' | cut -f9 | head -n1`
+		if [ "$f" != "" ]; then
+			rm "$COLLDIR/$f"
+		else
+			break
+		fi
+	done
+}
+
+upgrade() {
+	# INFO: self-upgrade of this script
+	NEWSCRIPT="/tmp/${SCRIPTNAME}"
+
+	wget -q -O ${NEWSCRIPT} ${UPGRADEURL} 2>/dev/null
+
+	if [ -f ${NEWSCRIPT} ]; then
+		# remove current script
+		stop
+		disable
+		# install new script
+		chmod +x ${NEWSCRIPT}
+		echo "Download complete, installing new script..."
+		${NEWSCRIPT} install --upgrade ; exit
+	else
+		plog "download wasn't successful, so current version remains at ${SCRIPT} (${SCRIPT} upgrade)"
+	fi
+}
+
+install() {
+	if [ "${SCRIPT}" = "${initscript}" ]; then
+		plog "Reinstalling..."
+		NEWSCRIPT="/tmp/${SCRIPTNAME}"
+		cp ${initscript} ${NEWSCRIPT}
+		chmod +x ${NEWSCRIPT}
+		${NEWSCRIPT} install $* ; exit
+	fi
+	stop
+	disable
+	echo
+	NEWSCRIPT="${initscript}"
+	if [ "$1" = "--upgrade" ]; then
+		( grep -m 1 "EXCLUDE_DEVICES=" ${SCRIPT} 2> /dev/null || echo 'EXCLUDE_DEVICES=""' ) > /tmp/${SCRIPTNAME}.conf
+		l=`grep -nm1 "EXCLUDE_DEVICES" ${NEWSCRIPT} | cut -d':' -f1`
+		head -n $(( $l -1 )) ${NEWSCRIPT} > ${SCRIPT}
+		cat /tmp/${SCRIPTNAME}.conf >> ${SCRIPT}
+		tail -n +$(( $l +1 )) ${NEWSCRIPT} >> ${SCRIPT}
+		chmod +x ${SCRIPT}
+	else
+		grep -m 1 "EXCLUDE_DEVICES=" ${SCRIPT} 2> /dev/null
+		echo
+		(
+		brctl show | sed -E 's/^([^ \t])/|\1/' | tr '\n|' ' \n' | tail -n +3 | sed -E 's/[ \t]+/ /g' | cut -d' ' -f 1,4- | while read line; do
+			essids=""
+			for dev in $line; do
+				essid=`iwinfo $dev info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
+				if [ "$essid" != "" ]; then
+					essids="'${essid}' ${essids}"
+				fi
+				if [ "`echo $dev | grep -F .`" != "" ]; then
+					line="$line `echo $dev | sed 's/\..*//'`"
+				fi
+			done
+			echo "${line}|$essids"
+		done
+		ifconfig -a | grep '^[a-z]' | cut -d' ' -f1 | grep -F '.' | while read line; do
+			essids=`iwinfo $line info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
+			if [ "`echo $line | grep -F .`" != "" ]; then
+				line="$line `echo $line | sed 's/\..*//'`"
+			fi
+			echo "${line}|$essids"
+		done
+		ifconfig -a | grep '^[a-z]' | cut -d' ' -f1 | while read line; do
+			essids=`iwinfo $line info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
+			echo "${line}|$essids"
+		done
+		echo
+		read sel
+		echo $sel
+		) | (
+		l=1
+		while read line; do
+			if [ "$line" = "" ]; then
+				break
+			fi
+			devs=`echo $line | cut -d'|' -f1`
+			essids=`echo $line | cut -d'|' -f2 | sed -E 's/(^ +| +$)//g'`
+			export option_${l}="$devs"
+			echo -n "  ${l}: ${devs}"
+			if [ "$essids" != "" ]; then
+				echo " [ ${essids} ]"
+			else
+				echo
+			fi
+			l=$(( $l + 1 ))
+		done
+		echo
+		echo "Please select numbers for devices to _EXCLUDE_ when collecting status information."
+		echo "You can select multiple choices by seperating them with spaces."
+		echo -n "Selection: "
+		read sel
+		options=""
+		for s in $sel; do
+			if [ "$s" -gt 0 -a "$s" -lt ${l} ]; then
+				o=`eval echo \\${option_${s}}`
+				options="${options} ${o}"
+			fi
+		done
+		echo
+		echo "Excluding: $options"
+		echo
+
+		l=`grep -nm1 "EXCLUDE_DEVICES" ${NEWSCRIPT} | cut -d':' -f1`
+		head -n $(( $l -1 )) ${NEWSCRIPT} > ${SCRIPT}
+		echo 'EXCLUDE_DEVICES="'`echo $options | sed -E 's/(^ +| +$)//g'`'"' >> ${SCRIPT}
+		tail -n +$(( $l +1 )) ${NEWSCRIPT} >> ${SCRIPT}
+		chmod +x ${SCRIPT}
+		)
+	fi
+
+	plog "version (${SCRIPTVERSION}) installed at ${SCRIPT}"
+	${SCRIPT} start
+}
