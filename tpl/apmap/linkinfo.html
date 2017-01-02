@@ -1,0 +1,26 @@
+{% import 'ffhelper.tpl' as ffh %}
+
+{% set l = link["left"] %}
+{% set r = link["right"] %}
+<table class='linkinfo'>
+    <tr>
+        <th colspan='2'></th>
+        <th><h3>{{ link[etxbase]|round(3) }}</h3></th>
+        <th style='text-align: right' colspan='2'>
+            <a href="https://monitor.freifunk-potsdam.de/grafana/dashboard/db/link-performance?var-hostname={{ link["h"+l] }}&var-remotehost={{ link["h"+r] }}" target="_blank">
+            <img src="grafana.svg" title="Grafana" alt="Grafana" width="24px" height="24px"></a>
+        </th>
+    </tr>
+    <tr><th colspan='2'>{{ link["h"+l] }}</th><td>{{ ffh.formatMeters( link["length"] ) }}</td><th colspan='2'>{{ link["h"+r] }}</th></tr>
+    {% for lnk in link["l"] %}
+    <tr style='border-top: 1px solid;'>
+        <th rowspan='3'>{{ lnk[l]["ip"] }}</th>
+        <td>{{ lnk[l].get(etxbase,1000000)|float|round(3) }}</td>
+        <th>ETX</th>
+        <td>{{ lnk[r].get(etxbase,1000000)|float|round(3) }}</td>
+        <th rowspan='3'>{{ lnk[r]["ip"] }}</th>
+    </tr>
+    <tr><td>{{ lnk[l].get(lqbase,0)|float|round(2) }}</td><th>LQ</th><td>{{ lnk[r].get(lqbase,0)|float|round(2) }}</td></tr>
+    <tr><td>{{ lnk[l].get(nlqbase,0)|float|round(2) }}</td><th>NLQ</th><td>{{ lnk[r].get(nlqbase)|float|round(2) }}</td></tr>
+    {% endfor %}
+</table>

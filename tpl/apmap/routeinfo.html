@@ -1,0 +1,11 @@
+{% import 'ffhelper.tpl' as ffh %}
+
+<table class='linkinfo'>
+    <tr><th>Total ETX:</th><th>{{ route["etx"]|round(3) }}</th></tr>
+    <tr><th>Total Distance:</th><td>{{ ffh.formatMeters( route["length"] ) }}</td></tr>
+    <tr><th>Start:</th><td>{{ route["start"] }}</td></tr>
+    {% for v in route["via"] %}
+        <tr>{% if loop.first %}<th rowspan='{{ loop.length }}'>Via:</th>{% endif %}<td>{{ v }}</td></tr>
+    {% endfor %}
+    <tr><th>Target:</th><td>{{ route["target"] }}</td></tr>
+</table>

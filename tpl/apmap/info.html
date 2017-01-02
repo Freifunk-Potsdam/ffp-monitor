@@ -1,0 +1,19 @@
+{% import 'ffhelper.tpl' as ffh %}
+
+<table>
+    <tr><th>Hostname:</th><td>{{ ap["hostname"] }}</td></tr>
+    <tr><th>IP(s):</th><td>{% include 'apdb/ips.html' %}</td></tr>
+    <tr><th>Gateways:</th><td>{% include 'apdb/routes.html' %}</td></tr>
+    <tr><th>Standort:</th><td>{% include 'apdb/location.html' %}</td></tr>
+    <tr><th>Uptime:</th><td>{{ ffh.formatDuration( ap.get("uptime", 0) ) }}</td></tr>
+    <tr><th>Ger&auml;t:</th><td>{% include 'apdb/device.html' %}</td></tr>
+    <tr><th>Firmware:</th><td>{% include 'apdb/firmware.html' %}</td></tr>
+    <tr><th>Script:</th><td>{% include 'apdb/scriptver.html' %}</td></tr>
+    <tr><th>Kontakt:</th><td>{% include 'apdb/contact.html' %}</td></tr>
+    <tr><th>Letzte Daten:</th><td>{{ ffh.formatDuration( (ap.get("delay", 0) // 60) * 60 ) }}</td></tr>
+    <tr><th>Links:</th><td>{% include 'apdb/links.html' %}</td></tr>
+
+
+</table>
+
+
