@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <link rel="stylesheet" href="../ol.css" type="text/css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../apmap.css" type="text/css">
+    <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="/ff/ol.js" type="text/javascript"></script>
+    <title>Freifunk Potsdam Access Point Database Map</title>
+</head>
+ <body>
+    <div id="map" class="infomap">
+        <div id="popup"></div>
+        <div id="info"></div>
+    </div>
+    {% block apinfo %}
+    {% include 'apinfo.html' %}
+    {% endblock %}
+    <script type="text/javascript">
+        var aplayer = new ol.layer.Vector({
+            title: 'added Layer',
+            style: {% block stylefunc %}{% include 'mapstyle.js' %}{% endblock %},
+            source: new ol.source.Vector({
+                projection : 'EPSG:3857',
+                format: new ol.format.GeoJSON(),
+                url: '{{ gjsurl }}',
+            }),
+        });
+
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+//                    source: new ol.source.MapQuest({layer: 'osm'})
+                    source: new ol.source.OSM()
+                }),
+                aplayer,
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([{{ ap.get("sysinfo",{}).get("longitude", DEFLON) }}, {{ ap.get("sysinfo",{}).get("latitude", DEFLAT) }}]),
+                zoom: 18
+            })
+        });
+
+        var popupe = document.getElementById('popup');
+        var infoe = document.getElementById('info');
+
+        var popup = new ol.Overlay({
+            element: popupe,
+            positioning: 'top-center',
+            offset: [0,-5],
+            stopEvent: false,
+        });
+
+        var info = new ol.Overlay({
+            element: infoe,
+            positioning: 'bottom-center',
+            offset: [0,-5],
+            stopEvent: true,
+            autoPan: true,
+            autoPanAnimation : {
+                duration : 250
+            }
+        });
+
+        map.addOverlay(popup);
+        map.addOverlay(info);
+
+        map.on('click', function(evt) {
+            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
+            if (feature) {
+                var c = feature.get("info");
+                if (c) {
+                    $(infoe).popover('destroy');
+                    $(infoe).popover({
+                        'placement': 'bottom',
+                        'html': true,
+                        'content': c,
+                        'animation': false,
+                    });
+                    if (feature.getGeometry().getType() == "Point") {
+                        info.setPosition(feature.getGeometry().getCoordinates());
+                    } else {
+                        info.setPosition(evt.coordinate);
+                    }
+                    $(infoe).popover('show');
+                }
+            } else {
+                $(infoe).popover('destroy');
+            }
+        });
+
+        map.on('pointermove', function (evt) {
+            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) { return feature; });
+            if (feature) {
+                var c = feature.get("popup");
+                if (c) {
+                    $(popupe).popover('destroy');
+                    $(popupe).popover({
+                        'placement': 'top',
+                        'html': true,
+                        'content': c,
+                        'animation': false,
+                    });
+                    popup.setPosition(feature.getGeometry().getCoordinates());
+                    $(popupe).popover('show');
+                }
+            } else {
+                $(popupe).popover('destroy');
+            }
+        });
+    </script>
+</body>
+</html>
