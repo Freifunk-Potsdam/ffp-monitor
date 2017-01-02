@@ -7,7 +7,7 @@ import time
 from xml.etree import ElementTree as ET
 from multiprocessing.pool import ThreadPool
 from pymongo import MongoClient
-from helpers import *
+from ips import *
 from pprint import pprint
 
 class FfXmlParser:
