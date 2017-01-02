@@ -1,6 +1,9 @@
 .apdb-row-odd {
     background-color: #EAEAEA;
 }
+.apdb-cell-header {
+    white-space: nowrap;
+}
 .apdb-cell-dead {
     background-color: #AAAAAA;
 }
