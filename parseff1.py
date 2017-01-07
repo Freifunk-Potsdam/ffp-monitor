@@ -25,7 +25,7 @@ class FfXmlParser:
             self.parsef(xml,ip)
             os.remove(f)
         except Exception as ex:
-            print(f)
+            print( time.strftime("%c"), f )
             traceback.print_exc()
             try:
                 errf = os.path.join(os.path.dirname(f),"err",os.path.basename(f))
@@ -39,6 +39,7 @@ class FfXmlParser:
             return getattr(self,sect)(xml,ip)
         print("%s not implemented." % sect)
 
+    # used up to script v0.9
     def parsef_ffinfo(self,xml,ip):
         self._mdb["tmpnodeinfo"].insert({
             "host":     xml.attrib.get("host"),
@@ -64,12 +65,26 @@ class FfXmlParser:
         # applying updates to mongodb
         self.update_ipnames(interfaces, host, time_)
         dhcpnets = self.update_dhcpnets( host, time_, leases )
-        self._mdb["tmpnodeinfo"].insert({
+        mdbni = {
             "host": host,
             "time": time_,
             "senderip": ip,
-            "ifc": interfaces,
-        })
+        }
+        if len(interfaces) > 0:
+            mdbni["ifc"] = interfaces
+        tmp = self.parse_sysinfo(xml)
+        if len(tmp) > 1:
+            mdbni["sysinfo"] = tmp
+        routes = self.parse_routes(xml)
+        if routes is not None:
+            tnl = self.parse_iptnl(xml)
+            for tn,t in tnl.items():
+                t["default"] = tn in routes
+                if tn in routes:
+                    routes.remove(tn)
+            mdbni["sgwroutes"] = tnl
+            mdbni["routes"] = routes
+        self._mdb["tmpnodeinfo"].insert( mdbni )
         # collecting influx data points
         tags = {
             "hostname":host,
@@ -174,12 +189,23 @@ class FfXmlParser:
             }
 
     def parse_routes(self,xml):
-        res = []
+        res = None
         for r in xml.findall("routes"):
+            res = [] if res is None else res
             for r in r.text.strip().split("\n"):
                 if r.strip() != "":
                     res.append(r.split()[2])
         return res
+
+    def parse_iptnl(self,xml):
+        iptnl = {}
+        for t in xml.findall("tunnel"):
+            for t in t.text.strip().split("\n"):
+                if t.startswith("tnl_"):
+                    t = t.split()
+                    if t[2] == "remote":
+                        iptnl[ t[0].strip(":") ] = {"remote": t[3]}
+        return iptnl
 
     def parse_sysinfo(self,xml):
         res = {"script":xml.attrib.get("ver","")}
@@ -256,6 +282,16 @@ class FfXmlParser:
         return fields
 
     def parse_ifconfig(self,xml):
+        bridges = {}
+        for brc in xml.findall("brctl"):
+            br = None
+            for l in brc.text.strip().split("\n")[1:]:
+                l = l.strip().split()
+                if len(l) > 1:
+                    br = l[0]
+                    bridges[ br ] = [ l[-1] ]
+                elif len(l) == 1 and br is not None:
+                    bridges[ br ].append(l[-1])
         interfaces = {}
         for ifc in xml.findall("ifconfig"):
             for i in ifc.findall("*"):
@@ -267,6 +303,12 @@ class FfXmlParser:
                         interfaces[name] = {"device":l[0]}
                         if "HWaddr" in l:
                             interfaces[name]["mac"] = l[ l.index("HWaddr") + 1 ]
+                        if l[0] in bridges:
+                            interfaces[name]["brports"] = bridges[ l[0] ]
+                        else:
+                            for br,brports in bridges.items():
+                                if l[0] in brports:
+                                    interfaces[name]["bridge"] = br
                     for l in i[1:]:
                         l = l.split()
                         if l[0] == "inet":
@@ -351,10 +393,10 @@ class FfXmlParser:
             for l in df:
                 l = l.strip().split()
                 tags = {}
-                tags["dev"] = l[0]
+#                tags["dev"] = l[0]
                 tags["mp"] = l[5]
                 fields = {
-    #                "size":int(l[1]),
+#                    "size":int(l[1]),
                     "used":int(l[2]),
                     "free":int(l[3]),
                 }
@@ -378,6 +420,8 @@ class FfXmlParser:
                         }
 
 if __name__ == "__main__":
+    sys.stderr = sys.stdout
+
     pidf = "/var/ffdata/parse.pid"
     if os.path.isfile(pidf):
         s = os.stat(pidf)
