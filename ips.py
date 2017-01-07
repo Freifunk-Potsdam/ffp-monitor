@@ -2,10 +2,25 @@ FFNETS = ["10.22.", "6."]
 PRIVNETS = [
     "10.",
     "192.168.",
-    "172.16.","172.17.","172.18.","172.19.","172.20.","172.21.","172.22.","172.23.","172.24.","172.25.","172.26.","172.27.","172.28.","172.29.","172.30.","172.31.",
-]
+] + [ "172.%d." % x for x in range(16,32) ]
 
-FFNETSORT = ["10.22.254.", "10.22.255.", "10.22.250.", "10.22.", "6."]
+FFNETMESH = [ "10.22.254." ]
+FFNETKK = [ "10.22.255." ]
+FFNETBB = [ "10.22.250." ]
+FFNETDHCP32 = [ "10.22.%d." % x for x in range(64,128) ]
+FFNETDHCP64 = [ "10.22.%d." % x for x in range(128,160) ]
+FFNETDHCP128 = [ "10.22.%d." % x for x in range(160,192) ]
+FFNETDHCP256 = [ "10.22.%d." % x for x in range(192,250) ]
+FFNETDHCP = FFNETDHCP32 + FFNETDHCP64 + FFNETDHCP128 + FFNETDHCP256
+FFNETSERVICE = [ "6." ]
+
+FFNETSORT = [ "10.22.254.", "10.22.255.", "10.22.250.", "10.22.", "6." ]
+
+def isinnets(ip,nets):
+    for n in nets:
+        if ip.startswith(n):
+            return True
+    return False
 
 def isffip(ip):
     for n in FFNETS:
