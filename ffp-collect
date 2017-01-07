@@ -178,7 +178,7 @@ fupload() {
 			echocrlf "$line3"
 		) | nc $UPLOADHOST 80
 		p=$!
-		sleep 10 && kill $p > /dev/null
+		sleep 10 && kill $p 2> /dev/null
 	fi
 }
 
