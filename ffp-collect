@@ -10,7 +10,7 @@ SCRIPTNAME='ffp-collect'
 SCRIPTPATH='/etc/init.d/' # _with_ trailing / !
 UPLOADHOST='monitor.freifunk-potsdam.de'
 UPLOADURL='/fff'
-UPGRADEURL='https://monitor.freifunk-potsdam.de/ffp-collect'
+UPGRADEURL='http://monitor.freifunk-potsdam.de/ffp-collect'
 
 ##### ----- do NOT edit from this line on ----- #####
 ## init variables; https://wiki.openwrt.org/doc/techref/initscripts
