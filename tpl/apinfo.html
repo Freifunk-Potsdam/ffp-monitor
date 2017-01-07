@@ -1,17 +1,54 @@
 {% import 'ffhelper.tpl' as ffh %}
 
+{% macro ipcls(ip) %}
+    {% if ips.isinnets(ip,ips.FFNETMESH) %}
+ffnetmesh
+    {% elif ips.isinnets(ip,ips.FFNETKK) %}
+ffnetkk
+    {% elif ips.isinnets(ip,ips.FFNETBB) %}
+ffnetbb
+    {% elif ips.isinnets(ip,ips.FFNETDHCP) %}
+ffnetdhcp
+    {% elif ips.isinnets(ip,ips.FFNETSERVICE) %}
+ffnetservice
+    {% elif ips.isinnets(ip,ips.PRIVNETS) %}
+ffnetpriv
+    {% endif %}
+{% endmacro %}
+
+{% macro ifinfo(i, c="") %}
+    <tr class="{{c}} first"><th class="device">{{ i["device"] }}</th><th>MAC-Adresse:</th><td>{{ i["mac"] }}</td></tr>
+    {% if showraw %}
+        <tr class="{{c}}"><td colspan="3">{{ i|pprint }}</td></tr>
+    {% endif %}
+    {% if "addr" in i %}
+        <tr class="{{c}}"><th></th><th>IP-Adresse:</th><td>{{ ffh.ffiplink( i["addr"], linkif = ips.isffip ) }}</td></tr>
+        <tr class="{{c}}"><th></th><th>Netzmaske:</th><td>{{ i["mask"] }} [/{{ ips.calcnet(i["addr"],i["mask"])[1] }}]</td></tr>
+        <tr class="{{c}}"><th></th><th>Netzwerkadresse:</th><td>{{ i["net"] }}</td></tr>
+        <tr class="{{c}}"><th></th><th>Broadcastadresse:</th><td>{{ i["bcast"] }}</td></tr>
+    {% endif %}
+    {% if "essid" in i %}
+        <tr class="{{c}}"><th></th><th>ESSID:</th><td>{{ i["essid"] }}</td></tr>
+        <tr class="{{c}}"><th></th><th>BSSID:</th><td>{{ i["bssid"] }}</td></tr>
+        <tr class="{{c}}"><th></th><th>Modus:</th><td>{{ i["mode"] }}</td></tr>
+        <tr class="{{c}}"><th></th><th>Encryption:</th><td>{{ i["encryption"] }}</td></tr>
+        <tr class="{{c}}"><th></th><th>Kanal:</th><td>{{ i["channel"] }} ({{ i["freq"] }} GHz)</td></tr>
+        <tr class="{{c}}"><th></th><th>TX-Power:</th><td>{{ i["txpower"] }} dBm</td></tr>
+    {% endif %}
+{% endmacro %}
+
 <div class="apinfo">
     <table>
         <tr class="apinfo-state-{{ ap['state'] }}"><th colspan="3"><h2>{{ ap["hostname"] }}</h2></th></tr>
-        <tr><td colspan="2">&nbsp;</td><td rowspan="5">{% include 'apdb/links.html' %}</td></tr>
+        <tr><td colspan="3">&nbsp;</td></tr>
         <tr><th>Standort:</th><td>{% include 'apdb/location.html' %}</td></tr>
         <tr><th>Longitude:</th><td>{{ ap.get("sysinfo",{}).get("longitude",None) }}</td></tr>
         <tr><th>Latitude:</th><td>{{ ap.get("sysinfo",{}).get("latitude",None) }}</td></tr>
         <tr><th>Kontakt:</th><td>{% include 'apdb/contact.html' %}</td></tr>
-        <tr><td colspan="3">&nbsp;</td></tr>
+        <tr><td colspan="2">&nbsp;</td><td rowspan="4">{% include 'apdb/links.html' %}</td></tr>
         <tr><th>Uptime:</th><td>{{ ffh.formatDuration( ap.get("uptime", 0) ) }}</td></tr>
         <tr><th>Letzte Daten:</th><td>{{ ffh.formatDuration( (ap.get("delay", 0) // 60) * 60 ) }}</td></tr>
-        <tr><td colspan="3">&nbsp;</td></tr>
+        <tr><td colspan="2">&nbsp;</td></tr>
         <tr><th>Ger&auml;t:</th><td>{% include 'apdb/device.html' %}</td></tr>
         <tr><th>Firmware:</th><td>{% include 'apdb/firmware.html' %}</td></tr>
         <tr><th>Script:</th><td>{% include 'apdb/scriptver.html' %}</td></tr>
@@ -20,29 +57,38 @@
         <tr><th>WAN-IP:</th><td>{{ ap["senderip"] }}</td></tr>
     {% endif %}
         <tr><th>Gateways:</th><td>{% include 'apdb/routes.html' %}</td></tr>
+    {% if ap["sgwroutes"] %}
+        <tr><th>Smart Gateways:</th><td>
+        {% for n,sgwr in ap["sgwroutes"]|dictsort %}
+            {% if sgwr["default"] %}
+                <b>{{ sgwr["remote"] }} [ {{ n }} ]</b>
+            {% else %}
+                {{ sgwr["remote"] }} [ {{ n }} ]
+            {% endif %}
+            {% if not loop.last %}<br>{% endif %}
+        {% endfor %}
+        </td></tr>
+    {% endif %}
     </table>
     <table>
         <tr><th colspan="3"><h4>Interface Konfiguration:</h4></th></tr>
 {% if "ifc" in ap %}
     {% for iname,i in ap["ifc"]|dictsort %}
-        <tr><th>{{ i["device"] }}</th><th>MAC-Adresse:</th><td>{{ i["mac"] }}</td></tr>
-        {% if showraw %}
-            <tr><td colspan="3">{{ i|pprint }}</td></tr>
+        {% if showalldevs %}
+            {{ ifinfo(i) }}
+            <tr><td colspan="3">&nbsp;</td></tr>
+        {% else %}
+            {% if not i["bridge"] and iname != "lo" and not iname.startswith("tnl_") %}
+                {% set cls = ipcls(i.get("addr","")) %}
+                {{ ifinfo(i,cls) }}
+                {% if i["brports"] %}
+                    {% for brp in i["brports"] %}
+                        {{ ifinfo( ap["ifc"][brp], cls+" indent" ) }}
+                    {% endfor %}
+                {% endif %}
+                <tr><td colspan="3">&nbsp;</td></tr>
+            {% endif %}
         {% endif %}
-        {% if "addr" in i %}
-            <tr><th></th><th>IP-Adresse:</th><td>{{ ffh.ffiplink( i["addr"], linkif = ips.isffip ) }}</td></tr>
-            <tr><th></th><th>Netzmaske:</th><td>{{ i["mask"] }} [/{{ ips.calcnet(i["addr"],i["mask"])[1] }}]</td></tr>
-            <tr><th></th><th>Netzwerkadresse:</th><td>{{ i["net"] }}</td></tr>
-            <tr><th></th><th>Broadcastadresse:</th><td>{{ i["bcast"] }}</td></tr>
-        {% endif %}
-        {% if "essid" in i %}
-            <tr><th></th><th>ESSID:</th><td>{{ i["essid"] }}</td></tr>
-            <tr><th></th><th>BSSID:</th><td>{{ i["bssid"] }}</td></tr>
-            <tr><th></th><th>Modus:</th><td>{{ i["mode"] }}</td></tr>
-            <tr><th></th><th>Kanal:</th><td>{{ i["channel"] }} ({{ i["freq"] }} GHz)</td></tr>
-            <tr><th></th><th>TX-Power:</th><td>{{ i["txpower"] }} dBm</td></tr>
-        {% endif %}
-        <tr><td colspan="3">&nbsp;</td></tr>
     {% endfor %}
 {% endif %}
     </table>
