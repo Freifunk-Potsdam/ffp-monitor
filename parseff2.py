@@ -31,9 +31,6 @@ for host in allhosts:
             for a,newv in list(n.items()):
                 oldv = old.get(a,None)
                 if newv != oldv:
-#                    print("Host %s.%s changed from %s to %s" % (host,a,oldv,newv))
-#                    pprint(oldv)
-#                    pprint(newv)
                     mongodb["changes"].insert({ "host": host, "time":time.time(), "ctime": t, "param": a, "new": newv, "old": oldv })
                 else:
                     n.pop(a)
@@ -72,8 +69,11 @@ for host in mongodb["nodes"].find():
 mongodb["tmpnodeinfo"].remove({ "time": { "$lt": now - 24 * 60 * 60 } })
 mongodb["changes"].remove({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
 # remove nodes, not seen for 35 days
-mongodb["nodes"].remove({ "last_ts": { "$lt": now - 35 * 24 * 60 * 60 } })
+for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 35 * 24 * 60 * 60 } }):
+    mongodb["nodes"].remove(n["_id"])
+    mongodb["changes"].insert({ "host": host, "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
 
+# update uptimes
 infq = 'SELECT last("uptime") AS "uptime" FROM "load" ' + \
     'WHERE time > NOW() - 24h AND time < NOW() GROUP BY ' + \
     'time(24h), "hostname" fill(none)'
