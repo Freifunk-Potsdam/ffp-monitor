@@ -11,12 +11,13 @@ body {
     position: absolute;
     top: 0px;
     bottom: 0px;
-    width: 70%;
+    right: 500px;
+    left:0px;
 }
 .apinfo {
     position:absolute;
     right: 0px;
-    width: 30%;
+    width: 500px;
     float: right;
     top: 0px;
     bottom: 0px;
@@ -37,6 +38,33 @@ h1,h2,h3,h4,h5 {
     vertical-align: top;
     white-space: nowrap;
     padding-right: 10px;
+}
+.apinfo .indent.first {
+    border-top: 1px solid;
+}
+.apinfo .device {
+    padding-left: 5px;
+}
+.apinfo .indent .device {
+    padding-left: 20px;
+}
+.apinfo .ffnetmesh {
+    background-color: #FFAAFF;
+}
+.apinfo .ffnetkk {
+    background-color: #FFFFAA;
+}
+.apinfo .ffnetbb {
+    background-color: #AAFFFF;
+}
+.apinfo .ffnetdhcp {
+    background-color: #AAFFAA;
+}
+.apinfo .ffnetservice {
+    background-color: #AAAAFF;
+}
+.apinfo .ffnetpriv {
+    background-color: #FFAAAA;
 }
 .popover b,
 .popover th,
