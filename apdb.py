@@ -26,7 +26,7 @@ class ApDb:
     @cherrypy.expose
     def apinfo(self,name,**kwargs):
         for ap in self.get_aps({"hostname": { "$regex": "^%s" % name }}):
-            return self.serve_site("apinfomap", ap = ap, ips = ips, DEFLAT = DEFLAT, DEFLON = DEFLON,
+            return self.serve_site("apinfomap", ap = ap, DEFLAT = DEFLAT, DEFLON = DEFLON,
                 gjsurl = "../aproutes.geojson?node=%s" % ap["hostname"], **kwargs )
         raise HTTPError(404)
 
@@ -120,7 +120,7 @@ class ApDb:
                     else:
                         adata.append( v )
                 else:
-                    adata.append( tpl.render( ap = ap, ips = ips ) )
+                    adata.append( tpl.render( ap = ap ) )
             data.append(adata)
         res = { "data": data, "cols": []}
         for c in cols:
@@ -145,8 +145,8 @@ class ApDb:
                 ]
             },
             "properties": {
-                "popup": self.get_tpl( "apmap/popup.html" ).render( ap = ap, ips = ips ),
-                "info":  self.get_tpl( "apmap/info.html"  ).render( ap = ap, ips = ips ),
+                "popup": self.get_tpl( "apmap/popup.html" ).render( ap = ap ),
+                "info":  self.get_tpl( "apmap/info.html"  ).render( ap = ap ),
                 "state": ap["state"],
                 "uplink": ips.anyextgateway( *ap.get("routes",[]) ),
             }
@@ -166,8 +166,7 @@ class ApDb:
                     link = l, 
                     etxbase = etxbase, 
                     lqbase =  {"etx3": "lq3","etx24": "lq24"}[etxbase],
-                    nlqbase = {"etx3":"nlq3","etx24":"nlq24"}[etxbase],
-                    ips = ips 
+                    nlqbase = {"etx3":"nlq3","etx24":"nlq24"}[etxbase]
                     ),
                 "etx":   l[etxbase],
             }
@@ -185,7 +184,7 @@ class ApDb:
                 "coordinates": l["c"] 
             },
             "properties": {
-                "info":  self.get_tpl( "apmap/routeinfo.html"  ).render( route = l, ips = ips ),
+                "info":  self.get_tpl( "apmap/routeinfo.html"  ).render( route = l ),
                 "etx":   l["etx"],
                 "maxetx":maxetx,
             }
