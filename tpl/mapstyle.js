@@ -5,7 +5,7 @@ function(feature, resolution){
         if (state == 'online') return '#00EE00'
         else if (state == 'late') return '#FFFF00'
         else if (state == 'offline') return '#FF0000'
-        else if (state == 'dead') return '#555555'
+        else if (state == 'dead') return 'rgba(55,55,55,0.5)'
         else if (state == 'unreachable') return '#AAAAFF'
         else if (state == 'selected') return '#3333FF'
         else return '#FFFFFF';
