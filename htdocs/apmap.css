@@ -105,8 +105,14 @@ h1,h2,h3,h4,h5 {
 #maxetx {
     min-width: 65px;
 }
-#slideetx {
-    width: 500px;
+@media (max-width: 1000px) {
+    #slideetx { width: 100px; }
+}
+@media (min-width: 1000px) {
+    #slideetx { width: 500px; }
+}
+@media (min-width: 1800px) {
+    #slideetx { width: 1000px; }
 }
 .linkinfo td,
 .linkinfo th {
