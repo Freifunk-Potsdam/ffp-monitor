@@ -114,7 +114,8 @@ class FfXmlParser:
                     {
                         "$setOnInsert": { "localIP": i["addr"] },
                         "$set": { "hostname": host, "last_seen": ts },
-                    }
+                    },
+                    upsert = True
                 )
 
     def update_dhcpnets(self, host, ts, leases):
