@@ -11,13 +11,13 @@ body {
     position: absolute;
     top: 0px;
     bottom: 0px;
-    right: 500px;
+    right: 600px;
     left:0px;
 }
 .apinfo {
     position:absolute;
     right: 0px;
-    width: 500px;
+    width: 600px;
     float: right;
     top: 0px;
     bottom: 0px;
@@ -26,6 +26,9 @@ body {
 }
 .apinfo table {
     width: 100%;
+}
+.right {
+    text-align: right;
 }
 .apinfo h2 {
     text-align: center;
@@ -38,6 +41,10 @@ h1,h2,h3,h4,h5 {
     vertical-align: top;
     white-space: nowrap;
     padding-right: 10px;
+}
+.apinfo .first td {
+    word-wrap: break-word;
+    max-width: 300px;
 }
 .apinfo .indent.first {
     border-top: 1px solid;
