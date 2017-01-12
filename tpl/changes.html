@@ -1,0 +1,87 @@
+<html>
+    <head>
+        <script src="/jquery.js"></script>
+        <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+        <script type="text/javascript">
+            google.load("visualization", "1", {packages:["table"]});
+            google.setOnLoadCallback(onLoad);
+
+            var cssClassNames = {
+                'headerRow': '{{ cssprefix }}-row-header',
+                'tableRow': '{{ cssprefix }}-row',
+                'oddTableRow': '{{ cssprefix }}-row-odd',
+                'selectedTableRow': '{{ cssprefix }}-row-selected',
+                'hoverTableRow': '{{ cssprefix }}-row-hover',
+                'headerCell': '{{ cssprefix }}-cell-header',
+                'tableCell': '{{ cssprefix }}-cell-table',
+                'rowNumberCell': '{{ cssprefix }}-cell-rownumber',
+                'table': '{{ cssprefix }}'
+            };
+
+            var qtimer;
+            var data;
+            var table;
+            var last_ts = 0;
+
+            function query() {
+                $.getJSON( '{{ jsonurl }}&since='+last_ts, {}, drawTable )
+                    .always(function () {
+                        qtimer = setTimeout(query, 30000);
+                    })
+                ;
+            }
+
+            function onLoad() {
+                table = new google.visualization.Table(document.getElementById('table_div'));
+                data = new google.visualization.DataTable();
+                query();
+            }
+
+            function drawTable( jsdata ) {
+                var scrollpos = document.documentElement.scrollTop || document.body.scrollTop;
+                if (data.getNumberOfColumns() <= 0) {
+                    for (c of jsdata["cols"].slice(1)) {
+                        data.addColumn(c);
+                    }
+                }
+//                data.removeRows(0,data.getNumberOfRows());
+                var r = data.getNumberOfRows();
+                for (d of jsdata["data"]) {
+                    data.addRow(d.slice(1));
+                    var c = 0;
+                    for (col of jsdata["cols"].slice(1)) {
+                        data.setProperty(r, c, "className", "{{ cssprefix }}-cell-"+d[0]+" {{ cssprefix }}-cell-"+col["class"]);
+                        c++;
+                    }
+                    r++;
+                }
+                document.getElementById('no').innerHTML = r;
+                last_ts = jsdata["last_ts"];
+                var si = table.getSortInfo()
+                table.draw(data, {
+                    showRowNumber: true, 
+                    allowHtml: true, 
+                    sortColumn: si ? si.column : 0, 
+                    sortAscending: si ? si.ascending : false, 
+                    width: '100%',
+                    cssClassNames: cssClassNames,
+                    page: 'enabled',
+                    pageSize: 100,
+                });
+                document.documentElement.scrollTop = scrollpos;
+                document.body.scrollTop = scrollpos;
+                if ( jsdata["data"].length >= 1000 ) {
+                    document.getElementById('no').innerHTML = ">"+r;
+                    clearTimeout(qtimer);
+                    qtimer = setTimeout(query, 1000);
+                }
+            }
+        </script>
+        <link rel="stylesheet" type="text/css" href="/ff/changes.css">
+        <title>Freifunk Potsdam Access Point Database Changes</title>
+    </head>
+    <body>
+        <p><b id="no">0</b><b> Eintr&auml;ge</b></p>
+        <div id="table_div"></div>
+    </body>
+</html>
