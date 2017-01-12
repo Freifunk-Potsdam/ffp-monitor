@@ -22,7 +22,7 @@ ffnetpriv
         <tr class="{{c}}"><td colspan="3">{{ i|pprint }}</td></tr>
     {% endif %}
     {% if "addr" in i %}
-        <tr class="{{c}}"><th></th><th>IP-Adresse:</th><td>{{ ffh.ffiplink( i["addr"], linkif = ips.isffip ) }}</td></tr>
+        <tr class="{{c}}"><th></th><th>IP-Adresse:</th><td>{{ ffh.ffiplink( i["addr"] ) }}</td></tr>
         <tr class="{{c}}"><th></th><th>Netzmaske:</th><td>{{ i["mask"] }} [/{{ ips.calcnet(i["addr"],i["mask"])[1] }}]</td></tr>
         <tr class="{{c}}"><th></th><th>Netzwerkadresse:</th><td>{{ i["net"] }}</td></tr>
         <tr class="{{c}}"><th></th><th>Broadcastadresse:</th><td>{{ i["bcast"] }}</td></tr>
@@ -39,6 +39,7 @@ ffnetpriv
 
 <div class="apinfo">
     <table>
+        <tr><th colspan="3" class="right"><a href="/ff/apmap">Zur&uuml;ck zur ganzen Karte</a></th></tr>
         <tr class="apinfo-state-{{ ap['state'] }}"><th colspan="3"><h2>{{ ap["hostname"] }}</h2></th></tr>
         <tr><td colspan="3">&nbsp;</td></tr>
         <tr><th>Standort:</th><td>{% include 'apdb/location.html' %}</td></tr>
@@ -61,9 +62,9 @@ ffnetpriv
         <tr><th>Smart Gateways:</th><td>
         {% for n,sgwr in ap["sgwroutes"]|dictsort %}
             {% if sgwr["default"] %}
-                <b>{{ sgwr["remote"] }} [ {{ n }} ]</b>
+                <b>{{ ffh.ffiplink( sgwr["remote"] ) }} [ {{ n }} ]</b>
             {% else %}
-                {{ sgwr["remote"] }} [ {{ n }} ]
+                {{ ffh.ffiplink( sgwr["remote"] ) }} [ {{ n }} ]
             {% endif %}
             {% if not loop.last %}<br>{% endif %}
         {% endfor %}
@@ -82,8 +83,12 @@ ffnetpriv
                 {% set cls = ipcls(i.get("addr","")) %}
                 {{ ifinfo(i,cls) }}
                 {% if i["brports"] %}
-                    {% for brp in i["brports"] %}
-                        {{ ifinfo( ap["ifc"][brp], cls+" indent" ) }}
+                    {% for brp in i["brports"]|sort %}
+                        {% if brp.replace(".","_") in ap["ifc"] %}
+                            {{ ifinfo( ap["ifc"][brp.replace(".","_")], cls+" indent" ) }}
+                        {% else %}
+                            <tr class="{{ cls }} indent first"><th class="device" colspan="3">{{ brp }}</th></tr>
+                        {% endif %}
                     {% endfor %}
                 {% endif %}
                 <tr><td colspan="3">&nbsp;</td></tr>
