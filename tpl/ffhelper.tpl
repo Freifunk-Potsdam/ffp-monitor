@@ -1,18 +1,18 @@
-{% macro link( url, text, target='' ) %}
-    <a href="{{ url }}" target="{{ target }}">{{ text }}</a>
+{% macro link( url, text, target='', title='' ) %}
+    <a href="{{ url }}" target="{{ target }}" title="{{ title }}">{{ text }}</a>
 {% endmacro %}
 
-{% macro ffiplink( ip, linkif=None ) %}
-    {% if linkif and linkif( ip ) %}
-        {{ link( "http://%s/" % ip, ip, "_blank" ) }}
+{% macro ffiplink( ip, tmp = '' ) %}
+    {% if ips.isffip( ip ) %}
+        {{ link( "http://%s/" % ip, ip, "_blank", ips.ffhostname( ip ) ) }}
     {% else %}
         {{ ip }}
     {% endif %}
 {% endmacro %}
 
-{% macro ffiplist( ipl, sep='<br>', linkif=None ) %}
+{% macro ffiplist( ipl, sep='<br>' ) %}
     {% for ip in ipl %}
-        {{ ffiplink( ip, linkif ) }}
+        {{ ffiplink( ip ) }}
         {% if not loop.last %}
             {{ sep }}
         {% endif %}
