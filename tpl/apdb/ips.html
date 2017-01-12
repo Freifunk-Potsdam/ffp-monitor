@@ -7,5 +7,5 @@
             {{ ipl.append( ifc["addr"] ) or '' }}
         {% endif %}
     {% endfor %}
-    {{ ffh.ffiplist( ips.ffipsort( ipl ), linkif = ips.isffip ) }}
+    {{ ffh.ffiplist( ips.ffipsort( ipl ) ) }}
 {% endif %}
