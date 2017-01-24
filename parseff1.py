@@ -105,12 +105,14 @@ class FfXmlParser:
 
     def update_ipnames(self, interfaces, host, ts):
         for i in interfaces.values():
-            if i.get("addr","").startswith("10.22."):
+            if isffip( i.get("addr","") ):
+                ns = list( self._mdb["names"].find({"localIP": i["addr"]}) )
+                if len(ns) > 1:
+                    self._mdb["names"].remove({"localIP": i["addr"]})
+                elif len(ns) == 1 and ns[0].get("last_seen",0) > ts:
+                    break
                 self._mdb["names"].update(
-                    {
-                        "localIP": i["addr"],
-                        "last_seen": { "$lt": ts },
-                    },
+                    { "localIP": i["addr"], },
                     {
                         "$setOnInsert": { "localIP": i["addr"] },
                         "$set": { "hostname": host, "last_seen": ts },
