@@ -145,6 +145,7 @@ class ApDb:
                 ]
             },
             "properties": {
+                "hostname": ap["hostname"],
                 "popup": self.get_tpl( "apmap/popup.html" ).render( ap = ap ),
                 "info":  self.get_tpl( "apmap/info.html"  ).render( ap = ap ),
                 "state": ap["state"],
