@@ -80,11 +80,12 @@
                         'animation': false,
                     });
                     if (feature.getGeometry().getType() == "Point") {
+                        window.location = "/ff/apinfo/" + feature.get("hostname");
                         info.setPosition(feature.getGeometry().getCoordinates());
                     } else {
                         info.setPosition(evt.coordinate);
+                        $(infoe).popover('show');
                     }
-                    $(infoe).popover('show');
                 }
             } else {
                 $(infoe).popover('destroy');
