@@ -110,8 +110,8 @@ mongodb["tmpnodeinfo"].remove({ "time": { "$lt": now - 24 * 60 * 60 } })
 mongodb["changes"].remove({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
 # remove nodes, not seen for 35 days
 for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 35 * 24 * 60 * 60 } }):
-    mongodb["nodes"].delete_one( {"_id":n["_id"]} )
-    mongodb["names"].delete_many( {"hostname":n["hostname"]} )
+    mongodb["nodes"].remove( n["_id"] )
+    mongodb["names"].remove( {"hostname":n["hostname"]} )
     mongodb["changes"].insert({ "host": n["hostname"], "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
 
 # update uptimes
