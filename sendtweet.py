@@ -5,10 +5,7 @@ from twitter import *
 import random
 random.seed()
 
-consumer_key = "cKeje5Ewu2Z8ypCCYbaAyrI3D"
-consumer_secret = "iflzycOOHnMjVo0c7qa5Kl8xJSETtlJdoDzwueR7kFfKXd2Nhz"
-access_token = "750253382317830144-qqTK4h9PrTzLPBihvpYdxeR3uLn4otI"
-access_token_secret = "EUsvP2OZonwjLyZMHmXYar2otRRyPFURgmiP5Z0CFTBtZ"
+from twitter_auth import *
 
 t = Twitter( auth = OAuth( access_token, access_token_secret, consumer_key, consumer_secret ))
 
