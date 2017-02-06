@@ -112,7 +112,13 @@ class ApDb:
                     v = ap.get( c[0], None )
                     t = c[2]["type"] if len(c) > 2 and "type" in c[2] else "string"
                     if t == "string":
-                        adata.append( str( v ) )
+                        if c[0] == "hostname":
+                            xv = str(v).split("-")
+                            for i in range(min(len(xv),2)):
+                                xv[i] = xv[i].zfill(3)
+                            adata.append({ "v": "-".join(xv), "f": str(v) })
+                        else:
+                            adata.append( str( v ) )
                     elif t == "number":
                         adata.append({ "v": floatdef(v), "f": str(v) })
                     elif t == "duration":
