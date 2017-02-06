@@ -23,7 +23,9 @@ class FfXmlParser:
             ip = os.path.basename(f).partition("_")[0]
             xml = ET.fromstring(fdata)
             self.parsef(xml,ip)
-            os.remove(f)
+            mvf = os.path.join(os.path.dirname(f),"mv",os.path.basename(f))
+            os.rename(f,mvf)
+#            os.remove(f)
         except Exception as ex:
             print( time.strftime("%c"), f )
             traceback.print_exc()
