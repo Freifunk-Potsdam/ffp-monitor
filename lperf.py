@@ -104,4 +104,4 @@ for d in mdata.values():
         mongodb["linkperf"].remove(d["_id"])
         mongodb["linkperf"].insert(d)
 
-mongodb["linkperf"].remove({"time":{"$lte":t-12*60*60}})
+mongodb["linkperf"].remove({"time":{"$lt":t}})
