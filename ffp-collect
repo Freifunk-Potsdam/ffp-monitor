@@ -20,13 +20,13 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='17.1'
+SCRIPTVERSION='17.2'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
 CRONTAB=${CRONTABPATH}${CRONTABUSER}
 
-UPLOADINTERVAL=$(awk 'BEGIN{srand();print int(rand()*60)}') # run cron hourly at a random minute
+UPLOADINTERVAL=$(awk 'BEGIN{srand();print int(rand()*10)}') # run cron hourly at a random minute
 UPGRADEMINUTE=$(( ( $UPLOADINTERVAL + 5 ) % 60 )) # upgrade 5 minutes after upload
 UPGRADEHOUR=$(awk 'BEGIN{srand();print int(rand()*24)}') # random hour for upgrade cron
 UPGRADEDAY='1'
@@ -196,7 +196,7 @@ start() {
 	fi
 	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
 
-	CRONJOB="${UPLOADINTERVAL} * * * * ${SCRIPT} upload # FreiFunkPotsdam-CollectUpload (v${SCRIPTVERSION})"
+	CRONJOB="${UPLOADINTERVAL}/10 * * * * ${SCRIPT} upload # FreiFunkPotsdam-CollectUpload (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
 	CRONJOB="* * * * * ${SCRIPT} collect # FreiFunkPotsdam-CollectCollection (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
