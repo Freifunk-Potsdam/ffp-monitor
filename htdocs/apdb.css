@@ -4,7 +4,7 @@
 .apdb-cell-header {
     white-space: nowrap;
 }
-.apdb-cell-dead {
+.apdb-cell-dead, .apdb-cell-renamed {
     background-color: #AAAAAA;
 }
 .apdb-cell-offline {
