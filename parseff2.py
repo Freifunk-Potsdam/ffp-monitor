@@ -95,7 +95,7 @@ for host in mongodb["nodes"].find():
         new = "offline"
     elif delay > 3 * 60 * 60:
         new = "late"
-    if new != old:
+    if new != old and ( new == "online" or old != "renamed" ):
         mongodb["changes"].insert({
             "host": host["hostname"],
             "time": now,
@@ -106,13 +106,32 @@ for host in mongodb["nodes"].find():
         })
         mongodb["nodes"].update({"hostname":host["hostname"]},{"$set":{"state":new}})
 
+# find renamed nodes and multi used ip adresses
+if time.time() % (60 * 60 * 3) < 5 * 60:
+    nodes = list(mongodb["nodes"].find())
+    for ip in [ x["localIP"] for x in mongodb["names"].find() ]:
+        ns = []
+        for n in nodes:
+            for d in n.get("ifc",{}).values():
+                if d.get("addr") == ip:
+                    ns.append(n)
+                    break
+        ns.sort(key = lambda x: x["last_ts"], reverse = True)
+        if len(ns) > 1:
+            for n in ns[1:]:
+                if n["state"] == "online":
+                    print("IP %s used by %s and %s" % ( ip, ns[0]["hostname"], n["hostname"] ))
+                else:
+                    mongodb["nodes"].update({"hostname":n["hostname"]},{"$set":{"state":"renamed"}})
+
 mongodb["tmpnodeinfo"].remove({ "time": { "$lt": now - 24 * 60 * 60 } })
 mongodb["changes"].remove({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
 # remove nodes, not seen for 35 days
 for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 35 * 24 * 60 * 60 } }):
     mongodb["nodes"].remove( n["_id"] )
     mongodb["names"].remove( {"hostname":n["hostname"]} )
-    mongodb["changes"].insert({ "host": n["hostname"], "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
+    if n["state"] != "renamed":
+        mongodb["changes"].insert({ "host": n["hostname"], "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
 
 # update uptimes
 infq = 'SELECT last("uptime") AS "uptime" FROM "load" ' + \
