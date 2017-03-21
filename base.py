@@ -28,6 +28,7 @@ cherrypy.config.update({
 mongodbe = MongoClient()
 mongodb = mongodbe["freifunk"]
 influxdb = influx.InfluxDB("localhost",8086,"freifunk","freifunk","freifunk",debug=False)
+influxdb_archive = influx.InfluxDB("localhost",8086,"ffarchive","freifunk","freifunk",debug=False)
 
 def startapp(app):
     return cherrypy.Application( app( mongodb, influxdb ) , script_name=None, config=None)
@@ -70,6 +71,19 @@ def formatDuration(v):
     if (m > 0):
         res += "%dm " % m;
     return res.strip()
+
+def formatGen(val, fact, pre, r=0):
+    i = 0
+    while i < len(pre) and val > fact:
+        val /= fact
+        i += 1
+    return str(round(val,r)) + pre[i]
+
+def formatSI(val,r=1):
+    return formatGen(val, 1000, [""," k"," M"," G"," T"," P"," E"],r)
+
+def formatBytes(val,r=1):
+    return formatGen(val, 1024, [" Bytes"," KiB"," MiB"," GiB"," TiB"," PiB"," EiB"],r)
 
 def haversine(lon1, lat1, lon2, lat2):
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
