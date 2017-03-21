@@ -27,7 +27,7 @@ function(feature, resolution){
                 points: 3,
                 fill: new ol.style.Fill({ color: color( props['state'] ) }),
                 stroke: new ol.style.Stroke({ color: '#222222' }),
-                radius: 1.5 * Math.max(3,Math.min(10/Math.sqrt(resolution),10))
+                radius: 1.5 * Math.max(3,Math.min(10/Math.sqrt(resolution),10)) * (props['state']=='dead' ? 0.5 : 1.0)
             })
         });
         return style;
@@ -36,7 +36,7 @@ function(feature, resolution){
             image: new ol.style.Circle({
                 fill: new ol.style.Fill({ color: color( props['state'] ) }),
                 stroke: new ol.style.Stroke({ color: '#222222' }),
-                radius: Math.max(3,Math.min(10/Math.sqrt(resolution),10))
+                radius: Math.max(3,Math.min(10/Math.sqrt(resolution),10)) * (props['state']=='dead' ? 0.5 : 1.0)
             })
         });
         return style;
