@@ -59,7 +59,7 @@ class ApDb:
         for d in self.get_links( { etxbase: { "$lte": maxetx } }, sort = [(etxbase,-1)] ):
             gjs["features"].append( self.link2gjs(d,etxbase) )
 
-        docs = self.get_aps( sort = [("last_ts",-1)] )
+        docs = self.get_aps( {"state":{"$ne":"renamed"}}, sort = [("last_ts",-1)] )
         for d in docs:
             gjs["features"].append( self.ap2gjs(d) )
 
@@ -78,7 +78,7 @@ class ApDb:
                 reachable.append(d["target"])
                 gjs["features"].append( self.route2gjs(d,maxetx) )
 
-        docs = self.get_aps( sort = [("last_ts",-1)] )
+        docs = self.get_aps( {"state":{"$ne":"renamed"}}, sort = [("last_ts",-1)] )
         for d in docs:
             if d["hostname"] not in reachable:
                 d["state"] = "unreachable"
