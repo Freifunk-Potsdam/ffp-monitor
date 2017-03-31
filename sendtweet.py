@@ -8,7 +8,7 @@ import datetime
 from datetime import date as date
 from datetime import datetime as dt
 from datetime import timedelta as td
-utcoffset = round( (dt.now() - dt.utcnow()).total_seconds() / 60 )
+utcoffset = round( (( dt.now() - td(days=1) ) - ( dt.utcnow() - td(days=1) )).total_seconds() / 60 )
 random.seed()
 
 from twitter_auth import *
@@ -94,7 +94,7 @@ elif sys.argv[1] == "netstate":
                 host = d["hostname"]
                 for v in vals:
                     time = v[cols.index('time')]
-                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") - td( minutes=utcoffset )
+                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") + td( minutes=utcoffset )
                     if ltime.date() == date.today() - td(days=1):
                         u = float(v[cols.index('mean')])
                         if host not in users:
@@ -140,7 +140,7 @@ elif sys.argv[1] == "netstate":
                 host = d["hostname"]
                 for v in vals:
                     time = v[cols.index('time')]
-                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") - td( minutes=utcoffset )
+                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") + td( minutes=utcoffset )
                     if ltime.date() == date.today() - td(days=1):
                         tr = int(v[cols.index('sum')])
                         if host not in rx:
@@ -162,7 +162,7 @@ elif sys.argv[1] == "netstate":
                 host = d["hostname"]
                 for v in vals:
                     time = v[cols.index('time')]
-                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") - td( minutes=utcoffset )
+                    ltime = dt.strptime(time,"%Y-%m-%dT%H:%M:%SZ") + td( minutes=utcoffset )
                     if ltime.date() == date.today() - td(days=1):
                         tr = int(v[cols.index('sum')])
                         if host not in tx:
