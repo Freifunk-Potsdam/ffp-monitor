@@ -8,7 +8,7 @@ PRIVNETS = [
 
 FFNETMESH = [ "10.22.254.", "10.22.16." ]
 FFNETKK = [ "10.22.255.", "10.22.31." ]
-FFNETBB = [ "10.22.250." ]
+FFNETBB = [ "10.22.250.", "10.22.251." ]
 FFNETDHCP32 = [ "10.22.%d." % x for x in range(64,128) ]
 FFNETDHCP64 = [ "10.22.%d." % x for x in range(128,160) ]
 FFNETDHCP128 = [ "10.22.%d." % x for x in range(160,192) ]
