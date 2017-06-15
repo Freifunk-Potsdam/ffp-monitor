@@ -449,7 +449,7 @@ if __name__ == "__main__":
     f.close()
 
     ffxmlp = FfXmlParser( mongodb, influxdb )
-    tp = ThreadPool(16)
+    tp = ThreadPool(32)
     for arg in sys.argv[1:]:
         if os.path.isfile( arg ):
             tp.apply_async( ffxmlp.parse_file, [ arg ] )
