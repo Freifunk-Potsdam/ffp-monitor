@@ -12,6 +12,7 @@ for host in allhosts:
     if len(new) > 0:
         if old is None:
             mongodb["changes"].insert({ "host": host, "time": time.time(), "ctime": new[0]["time"], "param": "hostname", "new": host, "old": None })
+            print("New node %s." % host)
             old = {}
         for n in new:
             n.pop("_id")
