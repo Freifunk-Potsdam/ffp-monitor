@@ -65,7 +65,7 @@ xdhcp() {
 
 xlinks() {
 	echo "<links>"
-	echo /links | nc 127.0.0.1 9090
+	echo /links | nc 127.0.0.1 9090 | grep -A 9999 {
 	echo "</links>"
 }
 
