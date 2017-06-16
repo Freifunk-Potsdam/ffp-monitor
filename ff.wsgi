@@ -62,4 +62,13 @@ class Root(ApDb,Changes):
     def index(self):
         raise HTTPRedirect("apdb")
 
+    @cherrypy.expose
+    def grafana(self, dashboard, **kwargs):
+        q = "&".join([ "var-%s=%s" % (k,v) for k,v in kwargs.items() ])
+        if dashboard == "nov":
+            raise HTTPRedirect( "https://monitor.freifunk-potsdam.de/grafana/dashboard/db/stat-node-overview?" + q )
+        elif dashboard == "lp":
+            raise HTTPRedirect( "https://monitor.freifunk-potsdam.de/grafana/dashboard/db/stat-link-performance?" + q )
+
+
 application = startapp( Root )
