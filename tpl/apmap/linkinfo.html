@@ -7,7 +7,7 @@
         <th colspan='2'></th>
         <th><h3>{{ link[etxbase]|round(3) }}</h3></th>
         <th style='text-align: right' colspan='2'>
-            <a href="https://monitor.freifunk-potsdam.de/grafana/dashboard/db/link-performance?var-hostname={{ link["h"+l] }}&var-remotehost={{ link["h"+r] }}" target="_blank">
+            <a href="/ff/grafana/lp?hostname={{ link["h"+l] }}&remotehost={{ link["h"+r] }}" target="_blank">
             <img src="grafana.svg" title="Grafana" alt="Grafana" width="24px" height="24px"></a>
         </th>
     </tr>
