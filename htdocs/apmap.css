@@ -64,6 +64,9 @@ h1,h2,h3,h4,h5 {
 .apinfo .ffnetbb {
     background-color: #AAFFFF;
 }
+.apinfo .ffnetvpn {
+    background-color: #FFCCAA;
+}
 .apinfo .ffnetdhcp {
     background-color: #AAFFAA;
 }
