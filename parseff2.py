@@ -83,6 +83,11 @@ for host in allhosts:
                 q["$set"] = n
             mongodb["nodes"].update( {"hostname": host}, q, upsert = True )
             old.update(n)
+    ips = set()
+    for dev in old.get("ifc",{}).values():
+        if "addr" in dev:
+            ips.add(dev["addr"])
+    mongodb["nodes"].update( {"hostname": host}, {"$set":{"ips":list(ips)}} )
 
 now = time.time()
 # find state changes
