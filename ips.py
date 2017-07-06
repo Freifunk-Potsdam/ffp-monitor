@@ -1,14 +1,15 @@
 from base import *
 
-FFNETS = ["10.22.", "6."]
+FFNETS = ["10.22.", "6.", "172.22.25"]
 PRIVNETS = [
     "10.",
     "192.168.",
-] + [ "172.%d." % x for x in range(16,32) ]
+] + [ "172.%d." % x for x in filter(lambda x: x!=22, range(16,32)) ]
 
 FFNETMESH = [ "10.22.254.", "10.22.16." ]
 FFNETKK = [ "10.22.255.", "10.22.31." ]
 FFNETBB = [ "10.22.250.", "10.22.251." ]
+FFNETVPN = [ "172.22.25" ]
 FFNETDHCP32 = [ "10.22.%d." % x for x in range(64,128) ]
 FFNETDHCP64 = [ "10.22.%d." % x for x in range(128,160) ]
 FFNETDHCP128 = [ "10.22.%d." % x for x in range(160,192) ]
@@ -17,7 +18,7 @@ FFNETDHCPEXT = [ "10.22.%d." % x for x in range(17,31) ]
 FFNETDHCP = FFNETDHCP32 + FFNETDHCP64 + FFNETDHCP128 + FFNETDHCP256 + FFNETDHCPEXT
 FFNETSERVICE = [ "6." ]
 
-FFNETSORT = [ "10.22.254.", "10.22.255.", "10.22.250.", "10.22.", "6." ]
+FFNETSORT = [ "10.22.254.", "10.22.255.", "10.22.250.", "10.22.", "6.", "172.22.25" ]
 
 def ffhostname(ip):
     r = mongodb["names"].find_one({"localIP":ip})
