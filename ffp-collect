@@ -1,16 +1,15 @@
 #!/bin/sh /etc/rc.common
-# /etc/init.d/ffp-collect enable
 
-# Network devices you want to exclude from statistics, for example private networks.
-EXCLUDE_DEVICES=""
+EXCLUDE_DEVICES="`uci -q get freifunk.status.exclude_devices`"
+AUTOUPGRADE=`uci -q get freifunk.status.autoupgrade`
+UPLOADHOST="`uci -q get freifunk.status.host`"
+UPLOADURL="`uci -q get freifunk.status.path`"
+UPGRADEURL="`uci -q get freifunk.status.upgradeurl`"
 
 COLLDIR=/tmp/collstat
 
 SCRIPTNAME='ffp-collect'
 SCRIPTPATH='/etc/init.d/' # _with_ trailing / !
-UPLOADHOST='monitor.freifunk-potsdam.de'
-UPLOADURL='/fff'
-UPGRADEURL='http://monitor.freifunk-potsdam.de/ffp-collect'
 
 ##### ----- do NOT edit from this line on ----- #####
 ## init variables; https://wiki.openwrt.org/doc/techref/initscripts
@@ -20,14 +19,13 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='17.2'
+SCRIPTVERSION='17.9'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
 CRONTAB=${CRONTABPATH}${CRONTABUSER}
 
-UPLOADINTERVAL=$(awk 'BEGIN{srand();print int(rand()*10)}') # run cron hourly at a random minute
-UPGRADEMINUTE=$(( ( $UPLOADINTERVAL + 5 ) % 60 )) # upgrade 5 minutes after upload
+UPGRADEMINUTE=$(awk 'BEGIN{srand();print int(rand()*60)}') # random minute for upgrade cron
 UPGRADEHOUR=$(awk 'BEGIN{srand();print int(rand()*24)}') # random hour for upgrade cron
 UPGRADEDAY='1'
 
@@ -163,8 +161,8 @@ fupload() {
 
 			len=$(( $len + 2 + 2 ))
 		
-			echocrlf "POST $UPLOADURL HTTP/1.1"
-			echocrlf "Host: $UPLOADHOST"
+			echocrlf "POST $3 HTTP/1.1"
+			echocrlf "Host: $2"
 			echocrlf "Connection: close"
 			echocrlf "Content-Length: $len"
 			echocrlf "Content-Type: multipart/form-data; boundary=$BOUNDARY"
@@ -176,7 +174,7 @@ fupload() {
 			cat "$1"
 			echocrlf
 			echocrlf "$line3"
-		) | nc $UPLOADHOST 80
+		) | nc $2 80
 		p=$!
 		sleep 10 && kill $p 2> /dev/null
 	fi
@@ -190,25 +188,24 @@ plog() {
 
 start() {
 	# INFO: enable init script AND add update cron job
-	if [ ! -f "/etc/rc.d/S${START}${SCRIPTNAME}" ]; then
-		enable
-		plog "init script enabled (${SCRIPT} start)"
-	fi
+        enable
 	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
 
-	CRONJOB="${UPLOADINTERVAL}/10 * * * * ${SCRIPT} upload # FreiFunkPotsdam-CollectUpload (v${SCRIPTVERSION})"
+	CRONJOB="*/10 * * * * ${SCRIPT} upload # FFP-StatusUpload (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
-	CRONJOB="* * * * * ${SCRIPT} collect # FreiFunkPotsdam-CollectCollection (v${SCRIPTVERSION})"
+	CRONJOB="* * * * * ${SCRIPT} collect # FFP-StatusCollection (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
-	CRONJOB="${UPGRADEMINUTE} ${UPGRADEHOUR} ${UPGRADEDAY} * * ${SCRIPT} upgrade # FreiFunkPotsdam-CollectUpgrade (v${SCRIPTVERSION})"
-	echo "${CRONJOB}" >> ${CRONTAB}
-
+        CRONJOB="${UPGRADEMINUTE} ${UPGRADEHOUR} ${UPGRADEDAY} * * ${SCRIPT} upgrade --auto # FFP-StatusAutoUpgrade (v${SCRIPTVERSION})"
+        echo "${CRONJOB}" >> ${CRONTAB}
+        sleep 1
 	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
 	plog "cron jobs for user ${CRONTABUSER} added"
 }
 
 stop() {
+        disable
 	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
+        sleep 1
 	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
 	plog "cron jobs for user ${CRONTABUSER} removed"
 	upload --now
@@ -264,8 +261,10 @@ upload_rm_or_gzip() {
 
 upload() {
 	if [ "$1" != "--now" ]; then
-		plog "sleeping 10 seconds before upload..."
-		sleep 10
+                # wait a random time
+                WAIT=$(awk 'BEGIN{srand();print int(rand()*300)}')
+		plog "sleeping $WAIT seconds before upload..."
+		sleep $WAIT
 	fi
 	for f in $COLLDIR/*.cff.xml.gz; do
 		upload_rm $f &
@@ -288,6 +287,10 @@ upload() {
 }
 
 upgrade() {
+        if [ "$AUTOUPGRADE" != "1" -a "$1" == "--auto" ]; then
+		echo "AutoUpgrade disabled, exiting."
+                exit
+        fi
 	# INFO: self-upgrade of this script
 	NEWSCRIPT="/tmp/${SCRIPTNAME}"
 
@@ -296,107 +299,31 @@ upgrade() {
 	if [ -f ${NEWSCRIPT} ]; then
 		# remove current script
 		stop
-		disable
 		# install new script
 		chmod +x ${NEWSCRIPT}
 		echo "Download complete, installing new script..."
-		${NEWSCRIPT} install --upgrade ; exit
+		${NEWSCRIPT} install ; exit
 	else
 		plog "download wasn't successful, so current version remains at ${SCRIPT} (${SCRIPT} upgrade)"
 	fi
 }
 
 install() {
-	if [ "${SCRIPT}" = "${initscript}" ]; then
-		plog "Reinstalling..."
-		NEWSCRIPT="/tmp/${SCRIPTNAME}"
-		cp ${initscript} ${NEWSCRIPT}
-		chmod +x ${NEWSCRIPT}
-		${NEWSCRIPT} install $* ; exit
+        if [ "$UPLOADHOST" == "" ]; then
+                # first install since version 17.8
+                uci set freifunk.status=config
+                uci set freifunk.status.host='monitor.freifunk-potsdam.de'
+                uci set freifunk.status.path='/fff'
+                uci set freifunk.status.upgradeurl='http://monitor.freifunk-potsdam.de/ffp-collect'
+                uci set freifunk.status.exclude_devices=' '
+                uci set freifunk.status.autoupgrade='1'
+                uci commit freifunk
+        fi
+	if [ "${SCRIPT}" != "${initscript}" ]; then
+                stop
+                mv ${initscript} ${SCRIPT}
+                chmod +x ${SCRIPT}
+                plog "version (${SCRIPTVERSION}) installed at ${SCRIPT}"
+                ${SCRIPT} start
 	fi
-	stop
-	disable
-	echo
-	NEWSCRIPT="${initscript}"
-	if [ "$1" = "--upgrade" ]; then
-		( grep -m 1 "EXCLUDE_DEVICES=" ${SCRIPT} 2> /dev/null || echo 'EXCLUDE_DEVICES=""' ) > /tmp/${SCRIPTNAME}.conf
-		l=`grep -nm1 "EXCLUDE_DEVICES" ${NEWSCRIPT} | cut -d':' -f1`
-		head -n $(( $l -1 )) ${NEWSCRIPT} > ${SCRIPT}
-		cat /tmp/${SCRIPTNAME}.conf >> ${SCRIPT}
-		tail -n +$(( $l +1 )) ${NEWSCRIPT} >> ${SCRIPT}
-		chmod +x ${SCRIPT}
-	else
-		grep -m 1 "EXCLUDE_DEVICES=" ${SCRIPT} 2> /dev/null
-		echo
-		(
-		brctl show | sed -E 's/^([^ \t])/|\1/' | tr '\n|' ' \n' | tail -n +3 | sed -E 's/[ \t]+/ /g' | cut -d' ' -f 1,4- | while read line; do
-			essids=""
-			for dev in $line; do
-				essid=`iwinfo $dev info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
-				if [ "$essid" != "" ]; then
-					essids="'${essid}' ${essids}"
-				fi
-				if [ "`echo $dev | grep -F .`" != "" ]; then
-					line="$line `echo $dev | sed 's/\..*//'`"
-				fi
-			done
-			echo "${line}|$essids"
-		done
-		ifconfig -a | grep '^[a-z]' | cut -d' ' -f1 | grep -F '.' | while read line; do
-			essids=`iwinfo $line info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
-			if [ "`echo $line | grep -F .`" != "" ]; then
-				line="$line `echo $line | sed 's/\..*//'`"
-			fi
-			echo "${line}|$essids"
-		done
-		ifconfig -a | grep '^[a-z]' | cut -d' ' -f1 | while read line; do
-			essids=`iwinfo $line info 2> /dev/null | head -n 1 | cut -d':' -f2- | tr -d '"' | sed -E 's/(^ +| +$)//g'`
-			echo "${line}|$essids"
-		done
-		echo
-		read sel
-		echo $sel
-		) | (
-		l=1
-		while read line; do
-			if [ "$line" = "" ]; then
-				break
-			fi
-			devs=`echo $line | cut -d'|' -f1`
-			essids=`echo $line | cut -d'|' -f2 | sed -E 's/(^ +| +$)//g'`
-			export option_${l}="$devs"
-			echo -n "  ${l}: ${devs}"
-			if [ "$essids" != "" ]; then
-				echo " [ ${essids} ]"
-			else
-				echo
-			fi
-			l=$(( $l + 1 ))
-		done
-		echo
-		echo "Please select numbers for devices to _EXCLUDE_ when collecting status information."
-		echo "You can select multiple choices by seperating them with spaces."
-		echo -n "Selection: "
-		read sel
-		options=""
-		for s in $sel; do
-			if [ "$s" -gt 0 -a "$s" -lt ${l} ]; then
-				o=`eval echo \\${option_${s}}`
-				options="${options} ${o}"
-			fi
-		done
-		echo
-		echo "Excluding: $options"
-		echo
-
-		l=`grep -nm1 "EXCLUDE_DEVICES" ${NEWSCRIPT} | cut -d':' -f1`
-		head -n $(( $l -1 )) ${NEWSCRIPT} > ${SCRIPT}
-		echo 'EXCLUDE_DEVICES="'`echo $options | sed -E 's/(^ +| +$)//g'`'"' >> ${SCRIPT}
-		tail -n +$(( $l +1 )) ${NEWSCRIPT} >> ${SCRIPT}
-		chmod +x ${SCRIPT}
-		)
-	fi
-
-	plog "version (${SCRIPTVERSION}) installed at ${SCRIPT}"
-	${SCRIPT} start
 }
