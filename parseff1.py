@@ -56,6 +56,11 @@ class FfXmlParser:
         time_ = float(xml.attrib.get("time"))
         ntime = int(time_ * 1000000000)
 
+        age = time.time() - time_
+        if age > 32*24*60*60:
+            print("Ignoring data from %s older than %d days." % ( host, age // (24*60*60) ))
+            return
+
         interfaces = self.parse_ifconfig( xml )
         networks = sorted( self.extract_networks( interfaces ), key = lambda x: x["bits"], reverse = True )
         for iname,iinfo in self.parse_iwinfo( xml ).items():
