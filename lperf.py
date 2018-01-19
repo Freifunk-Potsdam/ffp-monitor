@@ -5,6 +5,8 @@ import time
 from hashlib import md5
 from apdb import DEFLON,DEFLAT
 
+import ips
+
 def mean(l):
     while None in l:
         l.remove(None)
@@ -46,6 +48,8 @@ for r in idata.get('results',[]):
             d["nlq3"] = median([x[cols.index("nlq")] for x in vals[-3:]])
             d["nlq24"] = median([x[cols.index("nlq")] for x in vals[-24:]])
             if "hostname" in d and "remoteHostname" in d and "localIP" in d and "remoteIP" in d:
+                if ips.isnetvpn(d["localIP"]) or ips.isnetvpn(d["remoteIP"]):
+                    continue
                 _id = [d["hostname"],d["remoteHostname"]]
                 _id.sort()
                 _id = "_".join([md5(bytes(x,"utf-8")).hexdigest() for x in _id])

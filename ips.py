@@ -36,6 +36,12 @@ def isffip(ip):
             return True
     return False
 
+def isffvpn(ip):
+    for n in FFNETVPN:
+        if ip.startswith(n):
+            return True
+    return False
+
 def isextip(ip):
     for n in FFNETS+PRIVNETS:
         if ip.startswith(n):
