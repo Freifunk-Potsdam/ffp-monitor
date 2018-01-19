@@ -390,11 +390,14 @@ class FfXmlParser:
         for dl in xml.findall("dhcp_leases"):
             dl = [x.strip().split() for x in dl.text.strip().split("\n")]
             for l in dl:
-                if len(l) > 1 and float(l[0]) >= ts:
-                    for n in networks:
-                        if n["net"] == calcnet( l[ 2 if len(l) > 2 else 1 ], n["mask"] )[0]:
-                            leases[ "%s/%d" % ( n["net"], n["bits"] ) ] += 1
-                            break
+                try:
+                    if len(l) > 1 and float(l[0]) >= ts:
+                        for n in networks:
+                            if n["net"] == calcnet( l[ 2 if len(l) > 2 else 1 ], n["mask"] )[0]:
+                                leases[ "%s/%d" % ( n["net"], n["bits"] ) ] += 1
+                                break
+                except ValueError:
+                    print(l)
         return leases
 
     def parse_df(self,xml):
