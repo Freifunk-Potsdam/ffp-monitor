@@ -48,7 +48,7 @@ for r in idata.get('results',[]):
             d["nlq3"] = median([x[cols.index("nlq")] for x in vals[-3:]])
             d["nlq24"] = median([x[cols.index("nlq")] for x in vals[-24:]])
             if "hostname" in d and "remoteHostname" in d and "localIP" in d and "remoteIP" in d:
-                if ips.isnetvpn(d["localIP"]) or ips.isnetvpn(d["remoteIP"]):
+                if ips.isffvpn(d["localIP"]) or ips.isffvpn(d["remoteIP"]):
                     continue
                 _id = [d["hostname"],d["remoteHostname"]]
                 _id.sort()
