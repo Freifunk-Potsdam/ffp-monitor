@@ -111,7 +111,11 @@ class InfluxDB():
                     r = requests.post("http://%s:%d/write?db=%s" % (self.dbhost,self.dbport,self.dbname),auth=a,data=s)
                 else:
                     r = requests.post("http://%s:%d/write?db=%s" % (self.dbhost,self.dbport,self.dbname),data=s)
-                if r.status_code != 204:
+                if r.status_code == 500 and r.json().get("error",None) == timeout:
+                    # Got timeout trying again after some seconds
+                    time.sleep(3)
+                    continue
+                elif r.status_code != 204:
                     raise InfluxDBError(r.status_code,r.text)
             data = data[self.BATCH_SIZE:]
 
