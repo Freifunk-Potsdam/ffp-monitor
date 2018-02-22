@@ -74,6 +74,11 @@ elif sys.argv[1] == "netstate":
         msg += " und %d %s." % (states[-1][1],states[-1][0])
     else:
         msg += " alle %s." % states[0][0]
+
+    for s in sorted(mongodb["nodes"].distinct("state")):
+        if s != "online":
+            print( "%s:\n%s\n" % ( s, ", ".join([ n["hostname"] for n in mongodb["nodes"].find({"state":s}) ]) ) )
+    print()
     print(msg)
     sendtweet(t, msg)
 
