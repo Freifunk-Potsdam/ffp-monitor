@@ -58,7 +58,7 @@ class FfXmlParser:
 
         age = time.time() - time_
         if age > 32*24*60*60:
-            print("Ignoring data from %s older than %d days." % ( host, age // (24*60*60) ))
+#            print("Ignoring data from %s older than %d days." % ( host, age // (24*60*60) ))
             return
 
         interfaces = self.parse_ifconfig( xml )
@@ -349,18 +349,21 @@ class FfXmlParser:
                         if "ESSID:" in l:
                             interfaces[name]["essid"] = " ".join( l[ l.index("ESSID:") + 1: ] ).strip('"')
                     for l in i[1:]:
-                        if l.startswith("Access Point:"):
-                            interfaces[name]["bssid"] = l.split()[2]
-                        elif l.startswith("Assoc:"):
-                            interfaces[name]["assoc"] = int(l.split()[1])
-                        elif l.startswith("Mode:"):
-                            interfaces[name]["mode"] = l.split()[1]
-                            interfaces[name]["channel"] = l.split()[3]
-                            interfaces[name]["freq"] = l.split()[4].strip("()")
-                        elif l.startswith("Tx-Power:"):
-                            interfaces[name]["txpower"] = int(l.split()[1])
-                        elif l.startswith("Encryption:"):
-                            interfaces[name]["encryption"] = l.split()[1]
+                        try:
+                            if l.startswith("Access Point:"):
+                                interfaces[name]["bssid"] = l.split()[2]
+                            elif l.startswith("Assoc:"):
+                                interfaces[name]["assoc"] = int(l.split()[1])
+                            elif l.startswith("Mode:"):
+                                interfaces[name]["mode"] = l.split()[1]
+                                interfaces[name]["channel"] = l.split()[3]
+                                interfaces[name]["freq"] = l.split()[4].strip("()")
+                            elif l.startswith("Tx-Power:"):
+                                interfaces[name]["txpower"] = int(l.split()[1])
+                            elif l.startswith("Encryption:"):
+                                interfaces[name]["encryption"] = l.split()[1]
+                        except ValueError:
+                            pass
             if len(interfaces) == 0:
                 # old format
                 for l in iwi.text.strip().split("\n"):
