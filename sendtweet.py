@@ -132,7 +132,7 @@ elif sys.argv[1] == "netstate":
     alltx = 0
     q = 'SELECT sum("rx_bytes") \
          FROM "traffic_rx" \
-         WHERE "device" =~ /(ffuplink|ffvpn)/ AND time > NOW() - 48h AND time < NOW() - 2h \
+         WHERE "device" =~ /(ffuplink|ffvpn)$/ AND time > NOW() - 48h AND time < NOW() - 2h \
          GROUP BY time(1h),hostname fill(none)'
     ires = influxdb_archive.query(q)
     for r in ires.get('results',[]):
@@ -154,7 +154,7 @@ elif sys.argv[1] == "netstate":
                         allrx += tr
     q = 'SELECT sum("tx_bytes") \
          FROM "traffic_tx" \
-         WHERE "device" =~ /(ffuplink|ffvpn)/ AND time > NOW() - 48h AND time < NOW() - 2h \
+         WHERE "device" =~ /(ffuplink|ffvpn)$/ AND time > NOW() - 48h AND time < NOW() - 2h \
          GROUP BY time(1h),hostname fill(none)'
     ires = influxdb_archive.query(q)
     for r in ires.get('results',[]):
