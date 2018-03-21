@@ -66,6 +66,8 @@ def ffipsort(l):
 
 def anyextgateway(*gateways):
     for r in gateways:
+        if r.startswith("tnl_"):
+            continue
         if not isffip(r):
             return True
     return False
