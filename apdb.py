@@ -4,7 +4,7 @@ import shlex
 import ips
 import random
 
-DEFQUERYFIELDS = ["hostname","sysinfo.location","sysinfo.mail","ips","routes"]
+DEFQUERYFIELDS = ["hostname","sysinfo.location","sysinfo.mail","ips","routes","senderip"]
 QQUERIES = {
     "***": {"state":{"$in":["dead"]}},
     "**" : {"state":{"$in":["dead","offline"]}},
