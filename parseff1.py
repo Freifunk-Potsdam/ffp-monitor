@@ -26,14 +26,17 @@ class FfXmlParser:
             mvf = os.path.join(os.path.dirname(f),"mv",os.path.basename(f))
             os.rename(f,mvf)
 #            os.remove(f)
+            return
+        except ET.ParseError:
+            print( time.strftime("%c"), f, fdata.split("\n")[0] )
         except Exception as ex:
             print( time.strftime("%c"), f )
             traceback.print_exc()
-            try:
-                errf = os.path.join(os.path.dirname(f),"err",os.path.basename(f))
-                os.rename(f,errf)
-            except:
-                pass
+        try:
+            errf = os.path.join(os.path.dirname(f),"err",os.path.basename(f))
+            os.rename(f,errf)
+        except:
+            pass
 
     def parsef(self,xml,ip):
         sect = "parsef_%s" % xml.tag.lower()
@@ -112,7 +115,7 @@ class FfXmlParser:
 
     def update_ipnames(self, interfaces, host, ts):
         for i in interfaces.values():
-            if isffip( i.get("addr","") ):
+            if isffip( i.get("addr","") ) and not isffvpn( i.get("addr","") ):
                 ns = list( self._mdb["names"].find({"localIP": i["addr"]}) )
                 if len(ns) > 1:
                     self._mdb["names"].remove({"localIP": i["addr"]})
