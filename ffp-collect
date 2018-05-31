@@ -19,7 +19,7 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='17.9'
+SCRIPTVERSION='18.5'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
@@ -302,7 +302,7 @@ upgrade() {
 		# install new script
 		chmod +x ${NEWSCRIPT}
 		echo "Download complete, installing new script..."
-		${NEWSCRIPT} install ; exit
+		${NEWSCRIPT} install --upgrade ; exit
 	else
 		plog "download wasn't successful, so current version remains at ${SCRIPT} (${SCRIPT} upgrade)"
 	fi
