@@ -111,7 +111,7 @@ class InfluxDB():
                     r = requests.post("http://%s:%d/write?db=%s" % (self.dbhost,self.dbport,self.dbname),auth=a,data=s)
                 else:
                     r = requests.post("http://%s:%d/write?db=%s" % (self.dbhost,self.dbport,self.dbname),data=s)
-                if r.status_code == 500 and r.json().get("error",None) == timeout:
+                if r.status_code == 500 and r.json().get("error",None) == "timeout":
                     # Got timeout trying again after some seconds
                     time.sleep(3)
                     continue
