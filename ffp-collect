@@ -5,6 +5,7 @@ AUTOUPGRADE=`uci -q get freifunk.status.autoupgrade`
 UPLOADHOST="`uci -q get freifunk.status.host`"
 UPLOADURL="`uci -q get freifunk.status.path`"
 UPGRADEURL="`uci -q get freifunk.status.upgradeurl`"
+SENDCONTACT=`uci -q get freifunk.status.sendcontact`
 
 COLLDIR=/tmp/collstat
 
@@ -19,7 +20,7 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='18.5'
+SCRIPTVERSION='18.6'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
@@ -124,9 +125,11 @@ xoptions() {
 	grep 'latitude' /etc/config/system
 	grep 'longitude' /etc/config/system
 	grep 'location' /etc/config/system
-	grep 'mail' /etc/config/freifunk
-	grep 'note' /etc/config/freifunk
-	grep 'phone' /etc/config/freifunk
+	if [ "$SENDCONTACT" == "1" ]; then
+		grep 'mail' /etc/config/freifunk
+		grep 'note' /etc/config/freifunk
+		grep 'phone' /etc/config/freifunk
+	fi
 	echo "</options>"
 }
 
@@ -188,24 +191,24 @@ plog() {
 
 start() {
 	# INFO: enable init script AND add update cron job
-        enable
+	enable
 	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
 
 	CRONJOB="*/10 * * * * ${SCRIPT} upload # FFP-StatusUpload (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
 	CRONJOB="* * * * * ${SCRIPT} collect # FFP-StatusCollection (v${SCRIPTVERSION})"
 	echo "${CRONJOB}" >> ${CRONTAB}
-        CRONJOB="${UPGRADEMINUTE} ${UPGRADEHOUR} ${UPGRADEDAY} * * ${SCRIPT} upgrade --auto # FFP-StatusAutoUpgrade (v${SCRIPTVERSION})"
-        echo "${CRONJOB}" >> ${CRONTAB}
-        sleep 1
+	CRONJOB="${UPGRADEMINUTE} ${UPGRADEHOUR} ${UPGRADEDAY} * * ${SCRIPT} upgrade --auto # FFP-StatusAutoUpgrade (v${SCRIPTVERSION})"
+	echo "${CRONJOB}" >> ${CRONTAB}
+	sleep 1
 	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
 	plog "cron jobs for user ${CRONTABUSER} added"
 }
 
 stop() {
-        disable
+	disable
 	sed -i "/`echo ${SCRIPTNAME} | sed 's!/!\\\\/!g'`/d" ${CRONTAB}
-        sleep 1
+	sleep 1
 	echo "${CRONTABUSER}" > ${CRONTABPATH}cron.update # reload crontab
 	plog "cron jobs for user ${CRONTABUSER} removed"
 	upload --now
@@ -261,8 +264,8 @@ upload_rm_or_gzip() {
 
 upload() {
 	if [ "$1" != "--now" ]; then
-                # wait a random time
-                WAIT=$(awk 'BEGIN{srand();print int(rand()*300)}')
+		# wait a random time
+		WAIT=$(awk 'BEGIN{srand();print int(rand()*300)}')
 		plog "sleeping $WAIT seconds before upload..."
 		sleep $WAIT
 	fi
@@ -287,10 +290,10 @@ upload() {
 }
 
 upgrade() {
-        if [ "$AUTOUPGRADE" != "1" -a "$1" == "--auto" ]; then
+	if [ "$AUTOUPGRADE" != "1" -a "$1" == "--auto" ]; then
 		echo "AutoUpgrade disabled, exiting."
-                exit
-        fi
+		exit
+	fi
 	# INFO: self-upgrade of this script
 	NEWSCRIPT="/tmp/${SCRIPTNAME}"
 
@@ -309,21 +312,54 @@ upgrade() {
 }
 
 install() {
-        if [ "$UPLOADHOST" == "" ]; then
-                # first install since version 17.8
-                uci set freifunk.status=config
-                uci set freifunk.status.host='monitor.freifunk-potsdam.de'
-                uci set freifunk.status.path='/fff'
-                uci set freifunk.status.upgradeurl='http://monitor.freifunk-potsdam.de/ffp-collect'
-                uci set freifunk.status.exclude_devices=' '
-                uci set freifunk.status.autoupgrade='1'
-                uci commit freifunk
-        fi
-	if [ "${SCRIPT}" != "${initscript}" ]; then
-                stop
-                mv ${initscript} ${SCRIPT}
-                chmod +x ${SCRIPT}
-                plog "version (${SCRIPTVERSION}) installed at ${SCRIPT}"
-                ${SCRIPT} start
+	if [ "$1" != "--upgrade" ]; then
+		setup
+	elif [ "$SENDCONTACT" == "" ]; then
+		# first install since version 17.9
+		uci set freifunk.status.sendcontact='0'
+		uci commit freifunk
 	fi
+	if [ "$UPLOADHOST" == "" ]; then
+		# first install since version 17.8
+		uci set freifunk.status=config
+		uci set freifunk.status.host='monitor.freifunk-potsdam.de'
+		uci set freifunk.status.path='/fff'
+		uci set freifunk.status.upgradeurl='http://monitor.freifunk-potsdam.de/ffp-collect'
+		uci set freifunk.status.exclude_devices=' '
+		uci set freifunk.status.autoupgrade='1'
+		uci commit freifunk
+	fi
+	if [ "${SCRIPT}" != "${initscript}" ]; then
+		stop
+		mv ${initscript} ${SCRIPT}
+		chmod +x ${SCRIPT}
+		plog "version (${SCRIPTVERSION}) installed at ${SCRIPT}"
+		${SCRIPT} start
+	fi
+}
+
+setup() {
+	echo "###########################################################################"
+	echo
+	echo "Dieses Script uebertraegt einige technische Daten dieses Routers."
+	echo "Optional koennen die folgenden Kontaktinformationen mit uebertragen werden."
+	echo
+	echo "E-Mail:"
+	grep 'mail' /etc/config/freifunk
+	echo "Telefon:"
+	grep 'phone' /etc/config/freifunk
+	echo "Notiz:"
+	grep 'note' /etc/config/freifunk
+	echo
+	echo "Mit der Uebertragung stimmst du der Veroeffentlichung dieser Informationen"
+	echo "auf der Seite monitor.freifunk-potsdam.de zu."
+	echo
+	echo -n "Moechtest du, dass deine Kontaktinformationen uebertragen werden? [y/N] "
+	read x
+	if [ "$x" == "y" -o "$x" == "Y" ]; then
+		uci set freifunk.status.sendcontact='1'
+	else
+		uci set freifunk.status.sendcontact='0'
+	fi
+	uci commit freifunk
 }
