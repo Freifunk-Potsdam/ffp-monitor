@@ -109,6 +109,7 @@ class FfXmlParser:
         idps.extend( self.mk_idps( "wireless", ntime, tags, self.mk_idps_wireless( interfaces ) ) )
         idps.extend( self.mk_idps( "dhcp",     ntime, tags, self.mk_idps_dhcp( leases, dhcpnets ) ) )
         idps.extend( self.mk_idps( "links",    ntime, tags, self.mk_idps_links( self.parse_links(xml) ) ) )
+        idps.extend( self.parse_solar( xml, tags ) )
         # feeding influx data
         self._idb.write_points(idps)
 
@@ -232,6 +233,44 @@ class FfXmlParser:
                 i = i.split(":",1)
                 res[i[0].strip().lower()] = i[1].strip()
         return res
+
+    def parse_solar(self,xml,tags):
+        params = {
+            "V_in":"Vin",
+            "V_out":"Vout",
+            "New PWM value:":"PWM",
+            "PTC sensor voltage:":"Vptc",
+            "PTC sensor resistance:":"Rptc",
+            "Temperature":"T",
+            "Temperature adjusted charge end voltage:":"Vtadj",
+            "V_in_idle":"Vidle",
+            "Minimum V_mpp":"Vmppmin",
+            "Calculated V_mpp":"Vmppcal",
+            "New PWM value:":None,
+            "Load enabled":None,
+            "Parsed low voltage disconnect routine":None,
+            "MPP should be set":None,
+        }
+        idps = []
+        for s in xml.findall("solar"):
+            s = s.text.strip().split("\n")
+            ntime = int(s[0]) * 1000000000
+            for l in s[1:]:
+                for k,d in params.items():
+                    if l.startswith(k) and d is None:
+                        break
+                    elif l.startswith(k):
+                        try:
+                            t = {"param": d}
+                            t.update(tags)
+                            v = float(l[len(k):].strip().split()[0])
+                            idps.extend( self.mk_idp( "solar", ntime, t, {"value": v } ) )
+                            break
+                        except ValueError:
+                            pass
+                else:
+                    print( tags.get("hostname",None), s[0], l )
+        return idps
 
     def parse_uptime(self,xml):
         fields = {}
