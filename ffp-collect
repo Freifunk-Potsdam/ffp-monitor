@@ -312,13 +312,6 @@ upgrade() {
 }
 
 install() {
-	if [ "$1" != "--upgrade" ]; then
-		setup
-	elif [ "$SENDCONTACT" == "" ]; then
-		# first install since version 17.9
-		uci set freifunk.status.sendcontact='0'
-		uci commit freifunk
-	fi
 	if [ "$UPLOADHOST" == "" ]; then
 		# first install since version 17.8
 		uci set freifunk.status=config
@@ -327,6 +320,13 @@ install() {
 		uci set freifunk.status.upgradeurl='http://monitor.freifunk-potsdam.de/ffp-collect'
 		uci set freifunk.status.exclude_devices=' '
 		uci set freifunk.status.autoupgrade='1'
+		uci commit freifunk
+	fi
+	if [ "$1" != "--upgrade" ]; then
+		setup
+	elif [ "$SENDCONTACT" == "" ]; then
+		# first install since version 17.9
+		uci set freifunk.status.sendcontact='0'
 		uci commit freifunk
 	fi
 	if [ "${SCRIPT}" != "${initscript}" ]; then
