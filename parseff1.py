@@ -250,26 +250,34 @@ class FfXmlParser:
             "Load enabled":None,
             "Parsed low voltage disconnect routine":None,
             "MPP should be set":None,
+            "Going to sleep, input voltage too low":None,
+            "V_out at charge end voltage":None,
+            "old_mpp_pwm_val":None,
+            "In charge end loop":None,
         }
         idps = []
         for s in xml.findall("solar"):
             s = s.text.strip().split("\n")
-            ntime = int(s[0]) * 1000000000
             for l in s[1:]:
-                for k,d in params.items():
-                    if l.startswith(k) and d is None:
-                        break
-                    elif l.startswith(k):
-                        try:
-                            t = {"param": d}
-                            t.update(tags)
-                            v = float(l[len(k):].strip().split()[0])
-                            idps.extend( self.mk_idp( "solar", ntime, t, {"value": v } ) )
+                ntime,_,l = l.partition(" ")
+                try:
+                    ntime = int(ntime) * 1000000000
+                    for k,d in params.items():
+                        if l.startswith(k) and d is None:
                             break
-                        except ValueError:
-                            pass
-                else:
-                    print( tags.get("hostname",None), s[0], l )
+                        elif l.startswith(k):
+                            try:
+                                t = {"param": d}
+                                t.update(tags)
+                                v = float(l[len(k):].strip().split()[0])
+                                idps.extend( self.mk_idp( "solar", ntime, t, {"value": v } ) )
+                                break
+                            except ValueError:
+                                pass
+                    else:
+                        print( tags.get("hostname",None), s[0], l )
+                except ValueError:
+                    pass
         return idps
 
     def parse_uptime(self,xml):
