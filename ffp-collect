@@ -20,7 +20,7 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='18.6'
+SCRIPTVERSION='18.10'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
