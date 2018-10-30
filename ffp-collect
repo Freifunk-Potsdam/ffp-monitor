@@ -62,6 +62,15 @@ xdhcp() {
 	echo "</dhcp_leases>"
 }
 
+xstate() {
+	for f in $COLLDIR/*.state ; do
+		n=`basename $f .state`
+		echo "<$n>"
+		cat $f
+		echo "</$n>"
+	done
+}
+
 xlinks() {
 	echo "<links>"
 	echo /links | nc 127.0.0.1 9090 | grep -A 9999 {
@@ -221,6 +230,7 @@ collect() {
 	(
 		xtop
 		xuptime
+		xstate
 		xdhcp
 		xlinks
 		xconn
