@@ -20,7 +20,7 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='18.10'
+SCRIPTVERSION='19.1'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
@@ -64,10 +64,12 @@ xdhcp() {
 
 xstate() {
 	for f in $COLLDIR/*.state ; do
-		n=`basename $f .state`
-		echo "<$n>"
-		cat $f
-		echo "</$n>"
+		if [ -e $f ]; then
+			n=`basename $f .state`
+			echo "<$n>"
+			cat $f
+			echo "</$n>"
+		fi
 	done
 }
 
