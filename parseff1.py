@@ -21,6 +21,8 @@ class FfXmlParser:
             fdata = ff.read()
             ff.close()
             ip = os.path.basename(f).partition("_")[0]
+            # workaround for ffp-collect 18.10
+            fdata = fdata.replace("<*>\n</*>\n","")
             xml = ET.fromstring(fdata)
             self.parsef(xml,ip)
             mvf = os.path.join(os.path.dirname(f),"mv",os.path.basename(f))
@@ -56,6 +58,8 @@ class FfXmlParser:
 
     def parsef_ffstat(self,xml,ip):
         host = xml.attrib.get("host")
+        if host in ["gib-mir-einen-namen"]:
+            return
         time_ = float(xml.attrib.get("time"))
         ntime = int(time_ * 1000000000)
 
@@ -383,6 +387,10 @@ class FfXmlParser:
                             interfaces[name]["rx_bytes"] = int(l[1].partition(":")[2])
                             l = l[l.index("TX"):]
                             interfaces[name]["tx_bytes"] = int(l[1].partition(":")[2])
+                            if interfaces[name]["rx_bytes"] > 10**15:
+                                interfaces[name]["rx_bytes"] = 0
+                            if interfaces[name]["tx_bytes"] > 10**15:
+                                interfaces[name]["tx_bytes"] = 0
         return interfaces
 
     def parse_iwinfo(self,xml):
