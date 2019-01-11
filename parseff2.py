@@ -136,8 +136,8 @@ mongodb["changes"].remove({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
 for n in mongodb["nodes"].find({ "state":"renamed", "last_ts": { "$lt": now - 7 * 24 * 60 * 60 } }):
     print("Removed %s, it was renamed anyway." % n["hostname"])
     mongodb["nodes"].remove( n["_id"] )
-# remove nodes, not seen for 35 days
-for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 35 * 24 * 60 * 60 } }):
+# remove nodes, not seen for 100 days
+for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 100 * 24 * 60 * 60 } }):
     print("Removed %s." % n["hostname"])
     mongodb["nodes"].remove( n["_id"] )
     mongodb["names"].remove( {"hostname":n["hostname"]} )
