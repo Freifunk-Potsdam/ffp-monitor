@@ -20,7 +20,7 @@ STOP=11
 EXTRA_COMMANDS="upload collect upgrade install"
 
 ## script variables
-SCRIPTVERSION='19.1'
+SCRIPTVERSION='19.2'
 SCRIPT=${SCRIPTPATH}${SCRIPTNAME}
 CRONTABPATH='/var/spool/cron/crontabs/' # _with_ trailing / !
 CRONTABUSER='root'
@@ -126,6 +126,7 @@ xroutes() {
 	echo "</tunnel>"
 	echo "<routes>"
 	ip route show table main | grep default
+	ip route show table ffuplink 2> /dev/null | grep default
 	ip route show table olsr-default | grep default
 	ip route show table olsr-tunnel | grep default
 	echo "</routes>"
