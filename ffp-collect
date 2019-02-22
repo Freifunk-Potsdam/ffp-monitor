@@ -79,6 +79,12 @@ xlinks() {
 	echo "</links>"
 }
 
+xhna() {
+	echo "<hna>"
+	uci show olsrd | grep Hna | grep ".net"
+	echo "</hna>"
+}
+
 xtop() {
 	echo "<top>"
 	sleep 3
@@ -245,6 +251,7 @@ collect() {
 			xbrctl
 			xiwinfo
 			xifconfig
+			xhna
 		fi
 	) >> $f
 	echo "</ffstat>" >> $f
