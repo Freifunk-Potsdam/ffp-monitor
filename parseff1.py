@@ -9,6 +9,7 @@ from multiprocessing.pool import ThreadPool
 from pymongo import MongoClient
 from ips import *
 from pprint import pprint
+from collections import defaultdict
 
 class FfXmlParser:
     def __init__(self,mdb,idb):
@@ -98,6 +99,11 @@ class FfXmlParser:
                     routes.remove(tn)
             mdbni["sgwroutes"] = tnl
             mdbni["routes"] = routes
+        hna4,hna6 = self.parse_hna( xml)
+        if hna4 is not None:
+            mdbni["hna4"] = hna4
+        if hna6 is not None:
+            mdbni["hna6"] = hna6
         self._mdb["tmpnodeinfo"].insert( mdbni )
         # collecting influx data points
         tags = {
@@ -460,6 +466,22 @@ class FfXmlParser:
                 except ValueError:
                     print(l)
         return leases
+
+    def parse_hna(self, xml):
+        hna4 = None
+        hna6 = None
+        for dl in xml.findall("hna"):
+            hna4 = defaultdict(dict) if hna4 is None else hna4
+            hna6 = defaultdict(dict) if hna6 is None else hna6
+            _,_,dl = dl.lower().partition("hna")
+            ipv,_,dl = dl.partition("[")
+            n,_,dl = dl.partition("]")
+            p,_,v = dl.partition("=")
+            if int(ipv) == 4:
+                hna4[int(n)][ p.strip(". ") ] = v.strip(" '")
+            elif int(ipv) == 6:
+                hna6[int(n)][ p.strip(". ") ] = v.strip(" '")
+        return list(hna4.values()),list(hna6.values())
 
     def parse_df(self,xml):
         for df in xml.findall("df"):
