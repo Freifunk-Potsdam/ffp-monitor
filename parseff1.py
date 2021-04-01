@@ -238,11 +238,15 @@ class FfXmlParser:
             for o in o.text.strip().split("\n"):
                 if o.strip() != "":
                     o = o.strip().split(None,2)
-                    res[o[1].strip().lower()] = o[2].strip().strip("'\"")
+                    if len(o) > 2:
+                        res[o[1].strip().lower()] = o[2].strip().strip("'\"")
+                    elif len(o) > 1:
+                        res[o[1].strip().lower()] = ""
         for i in xml.findall("system"):
             for i in i.text.strip().split("\n"):
                 i = i.split(":",1)
-                res[i[0].strip().lower()] = i[1].strip()
+                if len(i) > 1:
+                    res[i[0].strip().lower()] = i[1].strip()
         return res
 
     def parse_solar(self,xml,tags):
@@ -313,24 +317,58 @@ class FfXmlParser:
             fields["uptime"] = uptime
         return fields
 
+#   CPU:   9% usr   0% sys   0% nic  81% idle   0% io   0% irq   9% sirq
+#   %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
     def parse_top_cpu(self,xml):
         fields = {}
         for t in xml.findall("top"):
-            t = t.text.strip().split("\n")
-            m = t[0].split()[1:]
-            c = t[1].split()[1:]
-            for i in range(len(c)//2):
-                fields["cpu_%s" % (c[i*2+1])] = int(c[i*2].strip("%"))
+            t = t.text.strip()
+            if t != "":
+                for l in t.split("\n"):
+                    l = l.split(":")
+                    if len(l) < 2:
+                        continue
+                    elif l[0] == "CPU":
+                        l = l[1].split()
+                        for i in range(len(l)//2):
+                            fields["cpu_%s" % (l[i*2+1])] = int(l[i*2].strip("%"))
+                    elif l[0] == "%Cpu(s)":
+                        kmap = {
+                            "us":"usr",
+                            "sy":"sys",
+                            "ni":"nic",
+                            "id":"idle",
+                            "wa":"io",
+                            "hi":"irq",
+                            "si":"sirq",
+                        }
+                        for vk in l[1].split(","):
+                            v,k = vk.split(None,1)
+                            fields["cpu_%s" % (kmap.get(k,k))] = round(float(v))
         return fields
 
+#   Mem: 39680K used, 21304K free, 3408K shrd, 3572K buff, 14120K cached
+#   MiB Mem :   5962.7 total,   3995.7 free,    268.7 used,   1698.3 buff/cache
     def parse_top_mem(self,xml):
         fields = {}
         for t in xml.findall("top"):
-            t = t.text.strip().split("\n")
-            m = t[0].split()[1:]
-            c = t[1].split()[1:]
-            for i in range(len(m)//2):
-                fields["mem_%s" % (m[i*2+1].strip(","))] = int(m[i*2].strip("K"))
+            t = t.text.strip()
+            if t != "":
+                for l in t.split("\n"):
+                    l = l.split(":")
+                    if len(l) < 2:
+                        continue
+                    elif l[0] == "Mem":
+                        l = l[1].split()
+                        for i in range(len(l)//2):
+                            fields["mem_%s" % (l[i*2+1].strip(","))] = int(l[i*2].strip("K"))
+                    elif l[0].strip() == "MiB Mem":
+                        kmap = {
+                            "buff/cache":"buff",
+                        }
+                        for vk in l[1].split(","):
+                            v,k = vk.split(None,1)
+                            fields["mem_%s" % (kmap.get(k,k))] = round(float(v)*1024)
         return fields
 
     def parse_conn(self,xml):
@@ -360,44 +398,83 @@ class FfXmlParser:
                 l = l.strip().split()
                 if len(l) > 1:
                     br = l[0]
-                    bridges[ br ] = [ l[-1] ]
+                    bridges[ br ] = [ ]
+                    if len(l) > 3:
+                        bridges[ br ].append( l[3] )
                 elif len(l) == 1 and br is not None:
                     bridges[ br ].append(l[-1])
         interfaces = {}
         for ifc in xml.findall("ifconfig"):
-            for i in ifc.findall("*"):
-                i = [x.strip() for x in i.text.strip().split("\n")]
+            for ix in ifc.findall("*"):
+                i = [x.strip() for x in ix.text.strip().split("\n")]
                 if len(i) > 0 and len(i[0]) > 0:
                     name = i[0].split()[0].replace(".","_")
-                    if name not in interfaces:
-                        l = i[0].split()
-                        interfaces[name] = {"device":l[0]}
-                        if "HWaddr" in l:
-                            interfaces[name]["mac"] = l[ l.index("HWaddr") + 1 ]
-                        if l[0] in bridges:
-                            interfaces[name]["brports"] = bridges[ l[0] ]
-                        else:
-                            for br,brports in bridges.items():
-                                if l[0] in brports:
-                                    interfaces[name]["bridge"] = br
-                    for l in i[1:]:
-                        l = l.split()
-                        if l[0] == "inet":
-                            for l in l[1:]:
-                                a,_,v = l.partition(":")
-                                interfaces[name][a.lower()] = v
-                        elif l[0] == "RX" and l[1].startswith("packets:"):
-                            interfaces[name]["rx_packets"] = int(l[1].partition(":")[2])
-                        elif l[0] == "TX" and l[1].startswith("packets:"):
-                            interfaces[name]["tx_packets"] = int(l[1].partition(":")[2])
-                        elif l[0] == "RX" and l[1].startswith("bytes:"):
-                            interfaces[name]["rx_bytes"] = int(l[1].partition(":")[2])
-                            l = l[l.index("TX"):]
-                            interfaces[name]["tx_bytes"] = int(l[1].partition(":")[2])
-                            if interfaces[name]["rx_bytes"] > 10**15:
-                                interfaces[name]["rx_bytes"] = 0
-                            if interfaces[name]["tx_bytes"] > 10**15:
-                                interfaces[name]["tx_bytes"] = 0
+                    if name == ix.tag:
+                        if name not in interfaces:
+                            l = i[0].split()
+                            interfaces[name] = {"device":l[0]}
+                            if "HWaddr" in l:
+                                interfaces[name]["mac"] = l[ l.index("HWaddr") + 1 ]
+                            if l[0] in bridges:
+                                interfaces[name]["brports"] = bridges[ l[0] ]
+                            else:
+                                for br,brports in bridges.items():
+                                    if l[0] in brports:
+                                        interfaces[name]["bridge"] = br
+                        for l in i[1:]:
+                            l = l.split()
+                            if l[0] == "inet":
+                                for l in l[1:]:
+                                    a,_,v = l.partition(":")
+                                    interfaces[name][a.lower()] = v
+                            elif l[0] == "RX" and l[1].startswith("packets:"):
+                                interfaces[name]["rx_packets"] = int(l[1].partition(":")[2])
+                            elif l[0] == "TX" and l[1].startswith("packets:"):
+                                interfaces[name]["tx_packets"] = int(l[1].partition(":")[2])
+                            elif l[0] == "RX" and l[1].startswith("bytes:"):
+                                interfaces[name]["rx_bytes"] = int(l[1].partition(":")[2])
+                                l = l[l.index("TX"):]
+                                interfaces[name]["tx_bytes"] = int(l[1].partition(":")[2])
+                                if interfaces[name]["rx_bytes"] > 10**15:
+                                    interfaces[name]["rx_bytes"] = 0
+                                if interfaces[name]["tx_bytes"] > 10**15:
+                                    interfaces[name]["tx_bytes"] = 0
+                    elif name == "%s:" % ix.tag:
+                        kmap = {
+                            "netmask":"mask",
+                            "broadcast":"bcast",
+                        }
+                        name = name.rstrip(":")
+                        if name not in interfaces:
+                            d = i[0].split()[0].rstrip(":")
+                            interfaces[name] = {"device":d}
+                            if d in bridges:
+                                interfaces[name]["brports"] = bridges[ d ]
+                            else:
+                                for br,brports in bridges.items():
+                                    if d in brports:
+                                        interfaces[name]["bridge"] = br
+                        for l in i[1:]:
+                            l = l.split()
+                            if l[0] == "inet":
+                                interfaces[name]["addr"] = l[1]
+                                for i in range(2,len(l),2):
+                                    k = l[i].lower()
+                                    interfaces[name][ kmap.get(k,k) ] = l[i+1]
+                            elif l[0] == "ether":
+                                interfaces[name]["mac"] = l[ 1 ]
+                            elif l[0] == "RX" and l[1] == "packets" and l[3] == "bytes":
+                                interfaces[name]["rx_packets"] = int(l[2])
+                                interfaces[name]["rx_bytes"] = int(l[4])
+                                if interfaces[name]["rx_bytes"] > 10**15:
+                                    interfaces[name]["rx_bytes"] = 0
+                            elif l[0] == "TX" and l[1] == "packets" and l[3] == "bytes":
+                                interfaces[name]["tx_packets"] = int(l[2])
+                                interfaces[name]["tx_bytes"] = int(l[4])
+                                if interfaces[name]["tx_bytes"] > 10**15:
+                                    interfaces[name]["tx_bytes"] = 0
+                    else:
+                        print(ix.tag,name,i)
         return interfaces
 
     def parse_iwinfo(self,xml):
@@ -420,9 +497,9 @@ class FfXmlParser:
                             elif l.startswith("Assoc:"):
                                 interfaces[name]["assoc"] = int(l.split()[1])
                             elif l.startswith("Mode:"):
-                                interfaces[name]["mode"] = l.split()[1]
-                                interfaces[name]["channel"] = l.split()[3]
-                                interfaces[name]["freq"] = l.split()[4].strip("()")
+                                interfaces[name]["mode"] = l.split(":")[1].rpartition(" ")[0].strip()
+                                interfaces[name]["channel"] = l.split(":")[2].split()[0].strip()
+                                interfaces[name]["freq"] = l.split("(")[1].strip("()").split()[0]
                             elif l.startswith("Tx-Power:"):
                                 interfaces[name]["txpower"] = int(l.split()[1])
                             elif l.startswith("Encryption:"):
@@ -472,17 +549,28 @@ class FfXmlParser:
         hna4 = None
         hna6 = None
         for dl in xml.findall("hna"):
-            hna4 = defaultdict(dict) if hna4 is None else hna4
-            hna6 = defaultdict(dict) if hna6 is None else hna6
-            _,_,dl = dl.lower().partition("hna")
-            ipv,_,dl = dl.partition("[")
-            n,_,dl = dl.partition("]")
-            p,_,v = dl.partition("=")
-            if int(ipv) == 4:
-                hna4[int(n)][ p.strip(". ") ] = v.strip(" '")
-            elif int(ipv) == 6:
-                hna6[int(n)][ p.strip(". ") ] = v.strip(" '")
-        return list(hna4.values()),list(hna6.values())
+            for l in dl.text.strip().split("\n"):
+                if l == "":
+                    continue
+                hna4 = defaultdict(dict) if hna4 is None else hna4
+                hna6 = defaultdict(dict) if hna6 is None else hna6
+                l,_,v = l.partition("=")
+                l,_,p = l.rpartition(".")
+                l = l.rpartition(".")[2]
+                l = l.lower().partition("hna")[2]
+                if "[" in l:
+                    ipv,_,l = l.partition("[")
+                    n,_,l = l.partition("]")
+                else:    
+                    ipv = l[0]
+                    n = l[1:]
+                if int(ipv) == 4:
+                    hna4[int(n)][ p.strip(". ") ] = v.strip(" '")
+                elif int(ipv) == 6:
+                    hna6[int(n)][ p.strip(". ") ] = v.strip(" '")
+        hna4 = None if hna4 is None else list(hna4.values())
+        hna6 = None if hna6 is None else list(hna6.values())
+        return hna4,hna6
 
     def parse_df(self,xml):
         for df in xml.findall("df"):
