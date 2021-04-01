@@ -105,7 +105,7 @@ for d in mdata.values():
             d["l"].sort(key=lambda x: x[etx])
             d[etx] = d["l"][0][etx]
         d["time"] = t
-        mongodb["linkperf"].remove(d["_id"])
-        mongodb["linkperf"].insert(d)
+        mongodb["linkperf"].delete_one({"_id":d["_id"]})
+        mongodb["linkperf"].insert_one(d)
 
-mongodb["linkperf"].remove({"time":{"$lt":t}})
+mongodb["linkperf"].delete_many({"time":{"$lt":t}})
