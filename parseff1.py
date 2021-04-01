@@ -50,7 +50,7 @@ class FfXmlParser:
 
     # used up to script v0.9
     def parsef_ffinfo(self,xml,ip):
-        self._mdb["tmpnodeinfo"].insert({
+        self._mdb["tmpnodeinfo"].insert_one({
             "host":     xml.attrib.get("host"),
             "time":     float(xml.attrib.get("time")),
             "senderip": ip,
@@ -105,7 +105,7 @@ class FfXmlParser:
             mdbni["hna4"] = hna4
         if hna6 is not None:
             mdbni["hna6"] = hna6
-        self._mdb["tmpnodeinfo"].insert( mdbni )
+        self._mdb["tmpnodeinfo"].insert_one( mdbni )
         # collecting influx data points
         tags = {
             "hostname":host,
@@ -130,10 +130,10 @@ class FfXmlParser:
             if isffip( i.get("addr","") ) and not isffvpn( i.get("addr","") ):
                 ns = list( self._mdb["names"].find({"localIP": i["addr"]}) )
                 if len(ns) > 1:
-                    self._mdb["names"].remove({"localIP": i["addr"]})
+                    self._mdb["names"].delete_many({"localIP": i["addr"]})
                 elif len(ns) == 1 and ns[0].get("last_seen",0) > ts:
                     break
-                self._mdb["names"].update(
+                self._mdb["names"].update_one(
                     { "localIP": i["addr"], },
                     {
                         "$setOnInsert": { "localIP": i["addr"] },
@@ -145,7 +145,7 @@ class FfXmlParser:
     def update_dhcpnets(self, host, ts, leases):
         for n,l in leases.items():
             if l > 0:
-                self._mdb["networks"].update(
+                self._mdb["networks"].update_one(
                     {"hostname":host},
                     {
                         "$setOnInsert":{"hostname":host},
