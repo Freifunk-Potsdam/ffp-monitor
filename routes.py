@@ -104,7 +104,7 @@ for g in groups:
         c += 1
     routes = list( n.get_all_routes() )
     print("Found %d routes between %d nodes in %d cycles." % (len(routes),len(g),c))
-    mongodb["nodegroups"].insert({"time":t,"members":list(g.keys())})
+    mongodb["nodegroups"].insert_one({"time":t,"members":list(g.keys())})
     for r in routes:
         r.update({"time":t})
         r["c"] = []
@@ -114,7 +114,7 @@ for g in groups:
                 floatdef(getelem(node,"sysinfo.longitude"),DEFLON),
                 floatdef(getelem(node,"sysinfo.latitude"),DEFLAT)
             ])
-        mongodb["routes"].insert(r)
+        mongodb["routes"].insert_one(r)
 
-mongodb["nodegroups"].remove({"time":{"$lt":t}})
-mongodb["routes"].remove({"time":{"$lt":t}})
+mongodb["nodegroups"].delete_many({"time":{"$lt":t}})
+mongodb["routes"].delete_many({"time":{"$lt":t}})
