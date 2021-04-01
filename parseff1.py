@@ -60,7 +60,7 @@ class FfXmlParser:
 
     def parsef_ffstat(self,xml,ip):
         host = xml.attrib.get("host")
-        if host in ["gib-mir-einen-namen"]:
+        if host in ["","gib-mir-einen-namen","XXX-YYY-eindeutiger-name"] or host.startswith("test"):
             return
         time_ = float(xml.attrib.get("time"))
         ntime = int(time_ * 1000000000)
