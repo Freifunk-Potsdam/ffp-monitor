@@ -11,7 +11,7 @@ for host in allhosts:
     new = list( mongodb["tmpnodeinfo"].find({ "host": host, "time": { "$gt": last_ts } }, sort = [("time",1)] ) )
     if len(new) > 0:
         if old is None:
-            mongodb["changes"].insert({ "host": host, "time": time.time(), "ctime": new[0]["time"], "param": "hostname", "new": host, "old": None })
+            mongodb["changes"].insert_one({ "host": host, "time": time.time(), "ctime": new[0]["time"], "param": "hostname", "new": host, "old": None })
             print("New node %s." % host)
             old = {}
         for n in new:
@@ -72,7 +72,7 @@ for host in allhosts:
                     c = { "host": host, "time":time.time(), "ctime": t, "param": a, "new": newv, "old": oldv }
                     if detail is not None:
                         c["detail"] = detail
-                    mongodb["changes"].insert( c )
+                    mongodb["changes"].insert_one( c )
                 else:
                     n.pop(a)
             q = {   
@@ -81,13 +81,13 @@ for host in allhosts:
             }
             if len(n) > 0:
                 q["$set"] = n
-            mongodb["nodes"].update( {"hostname": host}, q, upsert = True )
+            mongodb["nodes"].update_one( {"hostname": host}, q, upsert = True )
             old.update(n)
     ips = set()
     for dev in old.get("ifc",{}).values():
         if "addr" in dev:
             ips.add(dev["addr"])
-    mongodb["nodes"].update( {"hostname": host}, {"$set":{"ips":list(ips)}} )
+    mongodb["nodes"].update_one( {"hostname": host}, {"$set":{"ips":list(ips)}} )
 
 now = time.time()
 # find state changes
@@ -102,7 +102,7 @@ for host in mongodb["nodes"].find():
     elif delay > 3 * 60 * 60:
         new = "late"
     if new != old and ( new == "online" or old != "renamed" ):
-        mongodb["changes"].insert({
+        mongodb["changes"].insert_one({
             "host": host["hostname"],
             "time": now,
             "ctime": now,
@@ -110,7 +110,7 @@ for host in mongodb["nodes"].find():
             "new": new,
             "old": old,
         })
-        mongodb["nodes"].update({"hostname":host["hostname"]},{"$set":{"state":new}})
+        mongodb["nodes"].update_one({"hostname":host["hostname"]},{"$set":{"state":new}})
 
 # find renamed nodes and multi used ip adresses
 if time.time() % (60 * 60 * 3) < 5 * 60:
@@ -128,21 +128,21 @@ if time.time() % (60 * 60 * 3) < 5 * 60:
                 if n["state"] == "online":
                     print("IP %s used by %s and %s" % ( ip, ns[0]["hostname"], n["hostname"] ))
                 else:
-                    mongodb["nodes"].update({"hostname":n["hostname"]},{"$set":{"state":"renamed"}})
+                    mongodb["nodes"].update_one({"hostname":n["hostname"]},{"$set":{"state":"renamed"}})
 
-mongodb["tmpnodeinfo"].remove({ "time": { "$lt": now - 24 * 60 * 60 } })
-mongodb["changes"].remove({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
+mongodb["tmpnodeinfo"].delete_many({ "time": { "$lt": now - 24 * 60 * 60 } })
+mongodb["changes"].delete_many({ "time": { "$lt": now - 7 * 24 * 60 * 60 } })
 # remove renamed nodes, not seen for 7 days
 for n in mongodb["nodes"].find({ "state":"renamed", "last_ts": { "$lt": now - 7 * 24 * 60 * 60 } }):
     print("Removed %s, it was renamed anyway." % n["hostname"])
-    mongodb["nodes"].remove( n["_id"] )
+    mongodb["nodes"].delete_one( {"_id":n["_id"]} )
 # remove nodes, not seen for 100 days
 for n in mongodb["nodes"].find({ "last_ts": { "$lt": now - 100 * 24 * 60 * 60 } }):
     print("Removed %s." % n["hostname"])
-    mongodb["nodes"].remove( n["_id"] )
-    mongodb["names"].remove( {"hostname":n["hostname"]} )
+    mongodb["nodes"].delete_one( {"_id":n["_id"]} )
+    mongodb["names"].delete_many( {"hostname":n["hostname"]} )
     if n["state"] != "renamed":
-        mongodb["changes"].insert({ "host": n["hostname"], "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
+        mongodb["changes"].insert_one({ "host": n["hostname"], "time": time.time(), "ctime": time.time(), "param": "hostname", "new": None, "old": n["hostname"] })
 
 # update uptimes
 infq = 'SELECT last("uptime") AS "uptime" FROM "load" ' + \
@@ -160,6 +160,6 @@ for r in idata.get('results',[]):
             vals.sort(key=lambda x: x[cols.index('time')])
             host = d["hostname"]
             uptime = int(vals[-1][cols.index('uptime')])
-            mongodb["nodes"].update({"hostname":host},{"$set":{"uptime":uptime}})
+            mongodb["nodes"].update_one({"hostname":host},{"$set":{"uptime":uptime}})
 
 
