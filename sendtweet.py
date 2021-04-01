@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from base import *
 import time
-from twitter import *
+import twitter
 import traceback
 import random
 import datetime
@@ -13,20 +13,23 @@ random.seed()
 
 from twitter_auth import *
 
-t = Twitter( auth = OAuth( access_token, access_token_secret, consumer_key, consumer_secret ))
+tapi = twitter.Api( consumer_key=consumer_key, consumer_secret=consumer_secret, access_token_key=access_token, access_token_secret=access_token_secret )
 
-def sendtweet(twitter, msg):
-    if len(msg) > 140:
-        msg = msg[:137] + "..."
+def sendtweet(msg):
+    if len(msg) > 280:
+        msg = msg[:280-3] + "..."
     try:
-        t.statuses.update( status = msg )
+        tapi.PostUpdate( msg )
         return True
-    except TwitterHTTPError as ex:
-        errs = ex.response_data.get("errors",[])
-        for err in errs:
-            if err.get("code",0) == 187:
-                # duplicate, not sending again
-                return None
+    except twitter.error.TwitterError as ex:
+        if ex.args[0][0]["code"] == 187:
+            # duplicate, not sending again
+            return None
+#        errs = ex.response_data.get("errors",[])
+#        for err in errs:
+#            if err.get("code",0) == 187:
+#                # duplicate, not sending again
+#                return None
         traceback.print_exc(file=sys.stdout)
         return False
 
@@ -57,14 +60,15 @@ elif sys.argv[1] == "routermsg":
         tpls = list(mongodb["templates"].find( q ))
         if len(tpls) > 0:
             msg = random.choice(tpls)["msg"].format_map(c)
-            if sendtweet(t, msg) is not False:
-#                print(msg)
-                mongodb["tweets"].insert({ "msg": msg, "sent": now, "ctime": c["time"] })
+            if sendtweet(msg) is not False:
+                print(msg)
+                mongodb["tweets"].insert_one({ "msg": msg, "sent": now, "ctime": c["time"] })
                 break
 elif sys.argv[1] == "netstate":
     states = {}
     for s in mongodb["nodes"].distinct("state"):
-        states[s] = mongodb["nodes"].find({"state":s}).count()
+        states[s] = mongodb["nodes"].count_documents({"state":s})
+#        states[s] = mongodb["nodes"].find({"state":s}).count()
     states = sorted( states.items(), key = lambda x: x[1], reverse = True )
     msg = "Zum Freifunk Potsdam Netzwerk gehören %d Router, davon sind" % sum([ x[1] for x in states ])
     if len(states) > 1:
@@ -80,7 +84,7 @@ elif sys.argv[1] == "netstate":
             print( "%s:\n%s\n" % ( s, ", ".join([ n["hostname"] for n in mongodb["nodes"].find({"state":s}) ]) ) )
     print()
     print(msg)
-    sendtweet(t, msg)
+    sendtweet(msg)
 
     users = {}
     allusers = {}
@@ -131,10 +135,10 @@ elif sys.argv[1] == "netstate":
     allrx = 0
     alltx = 0
     q = 'SELECT sum("rx_bytes") \
-         FROM "traffic_rx" \
+         FROM "oneyear"."traffic_rx" \
          WHERE "device" =~ /(ffuplink|ffvpn)$/ AND time > NOW() - 48h AND time < NOW() - 2h \
          GROUP BY time(1h),hostname fill(none)'
-    ires = influxdb_archive.query(q)
+    ires = influxdb.query(q)
     for r in ires.get('results',[]):
         for s in r.get('series',[]):
             d = s.get('tags',{})
@@ -153,10 +157,10 @@ elif sys.argv[1] == "netstate":
                         rx[host] += tr
                         allrx += tr
     q = 'SELECT sum("tx_bytes") \
-         FROM "traffic_tx" \
+         FROM "oneyear"."traffic_tx" \
          WHERE "device" =~ /(ffuplink|ffvpn)$/ AND time > NOW() - 48h AND time < NOW() - 2h \
          GROUP BY time(1h),hostname fill(none)'
-    ires = influxdb_archive.query(q)
+    ires = influxdb.query(q)
     for r in ires.get('results',[]):
         for s in r.get('series',[]):
             d = s.get('tags',{})
@@ -181,17 +185,17 @@ elif sys.argv[1] == "netstate":
     msg = "Die meisten Clients waren gestern um %s online (%d), die wenigsten um %s (%d). " % \
         ( umax["time"], umax["users"], umin["time"], umin["users"] )
     print(msg)
-    sendtweet(t, msg)
+    sendtweet(msg)
     for urec in urecords[:3]:
         msg = "Gestern um %s waren bei %s %d Clients online." % (urec["time"],urec["host"],urec["users"])
         print(msg)
-        sendtweet(t, msg)
+        sendtweet(msg)
     for h,tr in traf[:3]:
         msg = "%s hat gestern %s übertragen, davon wurde %s heruntergeladen und %s hochgeladen." % \
             (h, formatBytes(tr,2), formatBytes(rx[h],2), formatBytes(tx[h],2))
         print(msg)
-        sendtweet(t, msg)
+        sendtweet(msg)
     msg = "Insgesamt wurden gestern %s übertragen, davon wurden %s heruntergeladen und %s hochgeladen." % \
         (formatBytes(allrx + alltx,2), formatBytes(allrx,2), formatBytes(alltx,2))
     print(msg)
-    sendtweet(t, msg)
+    sendtweet(msg)
