@@ -25,10 +25,9 @@ cherrypy.config.update({
     'environment': 'embedded',
 })
 
-mongodbe = MongoClient()
+mongodbe = MongoClient(host='mongodb')
 mongodb = mongodbe["freifunk"]
-influxdb = influx.InfluxDB("localhost",8086,"freifunk","freifunk","freifunk",debug=False)
-influxdb_archive = influx.InfluxDB("localhost",8086,"ffarchive","freifunk","freifunk",debug=False)
+influxdb = influx.InfluxDB("influxdb",8086,"freifunk",debug=False)
 
 def startapp(app):
     return cherrypy.Application( app( mongodb, influxdb ) , script_name=None, config=None)
