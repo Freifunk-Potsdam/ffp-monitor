@@ -27,9 +27,9 @@ class FfXmlParser:
             fdata = fdata.replace("<*>\n</*>\n","")
             xml = ET.fromstring(fdata)
             self.parsef(xml,ip)
-            mvf = os.path.join(os.path.dirname(f),"mv",os.path.basename(f))
-            os.rename(f,mvf)
-#            os.remove(f)
+#            mvf = os.path.join(os.path.dirname(f),"mv",os.path.basename(f))
+#            os.rename(f,mvf)
+            os.remove(f)
             return
         except ET.ParseError:
             print( time.strftime("%c"), f, fdata.split("\n")[0] )
