@@ -19,6 +19,7 @@ class FfXmlParser:
     def parse_file(self,f):
         try:
             ff = open(f,"rt",encoding="UTF-8")
+#            ff = open(f,"rt",encoding="ISO-8859-15")
             fdata = ff.read()
             ff.close()
             ip = os.path.basename(f).partition("_")[0]
