@@ -13,7 +13,7 @@ function(feature, resolution){
     var lcolor = function( etx ){
         if (etx > 10) return '#BB3333'
         else if (etx > 4 ) return '#FF6600'
-        else if (etx > 2 ) return '#FFCB05'
+        else if (etx > 2 ) return '#FFCC00'
         else return '#00CC00';
     };
     var rcolor = function( etx, maxetx ){
