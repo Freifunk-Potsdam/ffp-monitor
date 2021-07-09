@@ -155,6 +155,7 @@ class ApDb:
                 "popup": self.get_tpl( "apmap/popup.html" ).render( ap = ap ),
                 "info":  self.get_tpl( "apmap/info.html"  ).render( ap = ap ),
                 "state": ap["state"],
+                "last_data": time.time() - ap["last_ts"],
                 "uplink": ips.anyextgateway( *ap.get("routes",[]) ),
             }
         }
